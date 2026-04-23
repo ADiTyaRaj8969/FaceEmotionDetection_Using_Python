@@ -11,7 +11,7 @@ EMOTION_LABELS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutr
 # Load model once at startup
 model = None
 try:
-    from keras.models import load_model
+    from tensorflow.keras.models import load_model
     model = load_model('emotion.h5')
     print("Model loaded successfully.")
 except Exception as e:

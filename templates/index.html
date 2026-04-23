@@ -7,77 +7,93 @@
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+    :root {
+      --bg:      #0d0d1a;
+      --surface: #1a1a2e;
+      --card:    #16213e;
+      --border:  #2d2d4e;
+      --accent:  #7c3aed;
+      --accent2: #22d3ee;
+      --text:    #e0e0e0;
+      --muted:   #6b7280;
+      --radius:  12px;
+    }
+
+    html { font-size: 16px; }
     body {
-      background: #0d0d1a;
-      color: #e0e0e0;
+      background: var(--bg);
+      color: var(--text);
       font-family: 'Segoe UI', system-ui, sans-serif;
       min-height: 100vh;
     }
 
     /* ── Header ─────────────────────────── */
     header {
-      background: linear-gradient(135deg, #1a1a3e 0%, #0d0d1a 100%);
-      border-bottom: 2px solid #7c3aed;
-      padding: 14px 24px;
+      background: linear-gradient(135deg, #1a1a3e 0%, var(--bg) 100%);
+      border-bottom: 2px solid var(--accent);
+      padding: clamp(10px, 2vw, 16px) clamp(14px, 3vw, 24px);
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       flex-wrap: wrap;
     }
-    .logo { font-size: 1.8rem; }
+    .logo { font-size: clamp(1.4rem, 4vw, 1.9rem); line-height: 1; }
     .header-text .title {
-      font-size: 1.35rem;
+      font-size: clamp(1rem, 3vw, 1.35rem);
       font-weight: 700;
-      background: linear-gradient(90deg, #a78bfa, #22d3ee);
+      background: linear-gradient(90deg, #a78bfa, var(--accent2));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      white-space: nowrap;
     }
-    .header-text .subtitle { font-size: 0.8rem; color: #6b7280; margin-top: 2px; }
-
+    .header-text .subtitle {
+      font-size: clamp(0.65rem, 1.8vw, 0.8rem);
+      color: var(--muted);
+      margin-top: 2px;
+    }
     .status-pill {
       margin-left: auto;
       display: flex;
       align-items: center;
       gap: 7px;
-      background: #1a1a2e;
-      border: 1px solid #2d2d4e;
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 999px;
-      padding: 6px 14px;
-      font-size: 0.8rem;
+      padding: 5px 12px;
+      font-size: clamp(0.7rem, 1.8vw, 0.8rem);
+      white-space: nowrap;
     }
     .dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
+      width: 8px; height: 8px; border-radius: 50%;
       background: #4b5563;
-      transition: background 0.3s, box-shadow 0.3s;
+      transition: background .3s, box-shadow .3s;
       flex-shrink: 0;
     }
     .dot.on  { background: #10b981; box-shadow: 0 0 6px #10b981; }
     .dot.err { background: #ef4444; }
 
-    /* ── Layout ─────────────────────────── */
+    /* ── Main layout ────────────────────── */
     .main {
-      display: flex;
-      gap: 20px;
-      padding: 24px;
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 18px;
+      padding: clamp(12px, 2.5vw, 24px);
       max-width: 1200px;
       margin: 0 auto;
+      align-items: start;
     }
 
-    /* ── Video panel ────────────────────── */
-    .video-panel {
-      flex: 1; min-width: 0;
-      background: #1a1a2e;
-      border: 1px solid #2d2d4e;
-      border-radius: 14px;
+    /* ── Panel shared ───────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
     }
     .panel-header {
-      background: #16213e;
-      padding: 11px 16px;
-      border-bottom: 1px solid #2d2d4e;
+      background: var(--card);
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -85,151 +101,162 @@
       flex-wrap: wrap;
     }
     .panel-label {
-      font-size: 0.75rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.1em;
-      color: #9ca3af;
+      font-size: 0.7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .1em;
+      color: var(--muted);
     }
     .fps-badge {
-      font-size: 0.75rem; font-family: monospace;
+      font-size: 0.72rem; font-family: monospace;
       color: #10b981; background: #0d2318;
       padding: 2px 8px; border-radius: 4px;
     }
 
-    /* Camera selector row */
-    .cam-controls {
+    /* ── Camera controls bar ────────────── */
+    .cam-bar {
       background: #111827;
-      border-bottom: 1px solid #2d2d4e;
-      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 14px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
-    .cam-select-wrap {
-      display: flex; align-items: center; gap: 7px; flex: 1; min-width: 160px;
+    .cam-bar label {
+      font-size: 0.72rem; color: var(--muted); white-space: nowrap; flex-shrink: 0;
     }
-    .cam-select-wrap label { font-size: 0.75rem; color: #9ca3af; white-space: nowrap; }
-    select#camSelect {
-      flex: 1;
-      background: #1a1a2e;
-      color: #e0e0e0;
-      border: 1px solid #2d2d4e;
-      border-radius: 6px;
-      padding: 5px 8px;
-      font-size: 0.8rem;
-      cursor: pointer;
+    #camSelect {
+      flex: 1; min-width: 0;
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 5px 8px; font-size: 0.78rem; cursor: pointer;
     }
-    select#camSelect:focus { outline: none; border-color: #7c3aed; }
+    #camSelect:focus { outline: none; border-color: var(--accent); }
+    .face-btn {
+      background: var(--surface); color: var(--muted);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 5px 10px; font-size: 0.75rem; cursor: pointer;
+      transition: background .2s; white-space: nowrap; flex-shrink: 0;
+    }
+    .face-btn:hover   { background: var(--border); }
+    .face-btn.active  { background: #4c1d95; color: #a78bfa; border-color: var(--accent); }
 
-    .facing-btn {
-      background: #1a1a2e;
-      color: #9ca3af;
-      border: 1px solid #2d2d4e;
-      border-radius: 6px;
-      padding: 5px 12px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: background 0.2s;
-      white-space: nowrap;
-    }
-    .facing-btn:hover { background: #2d2d4e; }
-    .facing-btn.active { background: #4c1d95; color: #a78bfa; border-color: #7c3aed; }
-
+    /* ── Video area ─────────────────────── */
     .video-wrap {
       position: relative;
-      width: 100%;
-      background: #000;
-      aspect-ratio: 4/3;
+      width: 100%; background: #000;
+      /* 4:3 on desktop, allow taller on mobile */
+      aspect-ratio: 4 / 3;
     }
     #webcam {
       width: 100%; height: 100%;
-      object-fit: cover;
-      display: block;
+      object-fit: cover; display: block;
     }
     #overlay {
       position: absolute; inset: 0;
       width: 100%; height: 100%;
+      pointer-events: none;
     }
     .placeholder {
       position: absolute; inset: 0;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      color: #4b5563; gap: 10px;
+      color: #4b5563; gap: 10px; padding: 20px; text-align: center;
     }
-    .placeholder .icon { font-size: 3.5rem; }
-    .placeholder p { font-size: 0.875rem; }
+    .placeholder .ph-icon { font-size: clamp(2rem, 8vw, 3.5rem); }
+    .placeholder p { font-size: clamp(0.78rem, 2vw, 0.9rem); }
 
+    /* ── Controls row ───────────────────── */
     .controls {
-      padding: 14px 16px;
-      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     }
     .btn {
-      padding: 9px 20px; border-radius: 8px; border: none;
-      font-weight: 600; font-size: 0.875rem; cursor: pointer;
-      transition: opacity 0.2s, transform 0.1s;
+      padding: 9px 18px; border-radius: 8px; border: none;
+      font-weight: 600; font-size: 0.85rem; cursor: pointer;
+      transition: opacity .2s, transform .1s;
     }
-    .btn:active { transform: scale(0.97); }
-    .btn-start { background: #7c3aed; color: #fff; }
+    .btn:active { transform: scale(.97); }
+    .btn-start { background: var(--accent); color: #fff; }
     .btn-start:hover { background: #6d28d9; }
-    .btn-stop  { background: #374151; color: #e0e0e0; }
+    .btn-stop  { background: #374151; color: var(--text); }
     .btn-stop:hover  { background: #4b5563; }
 
-    /* ── Results panel ──────────────────── */
-    .results-panel {
-      width: 290px; flex-shrink: 0;
-      display: flex; flex-direction: column; gap: 16px;
-    }
+    /* ── Results panel stack ────────────── */
+    .results { display: flex; flex-direction: column; gap: 14px; }
     .card {
-      background: #1a1a2e;
-      border: 1px solid #2d2d4e;
-      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       overflow: hidden;
     }
-    .card-body { padding: 16px; }
+    .card-body { padding: 14px; }
 
-    .emotion-hero {
-      text-align: center;
-      padding: 28px 16px 22px;
-    }
-    .emotion-emoji { font-size: 4rem; line-height: 1; display: block; }
-    .emotion-name  { font-size: 1.6rem; font-weight: 700; margin-top: 8px; }
-    .emotion-conf  { font-size: 0.82rem; color: #6b7280; margin-top: 4px; }
-
+    /* Emotion hero */
+    .emotion-hero { text-align: center; padding: clamp(16px, 3vw, 28px) 14px clamp(14px, 2.5vw, 22px); }
+    .e-emoji { font-size: clamp(2.8rem, 7vw, 4rem); line-height: 1; display: block; }
+    .e-name  { font-size: clamp(1.2rem, 3.5vw, 1.6rem); font-weight: 700; margin-top: 8px; }
+    .e-conf  { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
     .idle-state {
-      text-align: center; padding: 32px 16px; color: #4b5563;
+      text-align: center; padding: clamp(20px, 4vw, 32px) 14px; color: #4b5563;
     }
-    .idle-state .icon { font-size: 2.5rem; display: block; margin-bottom: 8px; }
-    .idle-state p { font-size: 0.85rem; }
+    .idle-state .icon { font-size: clamp(2rem, 5vw, 2.5rem); display: block; margin-bottom: 8px; }
+    .idle-state p { font-size: 0.82rem; }
 
-    .stats-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-    }
-    .stat-box {
-      background: #16213e; border-radius: 10px;
-      padding: 14px; text-align: center;
-    }
-    .stat-val   { font-size: 2rem; font-weight: 700; color: #a78bfa; }
+    /* Stats */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-box { background: var(--card); border-radius: 9px; padding: 12px; text-align: center; }
+    .stat-val   { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 700; color: #a78bfa; }
     .stat-label {
-      font-size: 0.7rem; text-transform: uppercase;
-      letter-spacing: 0.07em; color: #6b7280; margin-top: 2px;
+      font-size: 0.68rem; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--muted); margin-top: 2px;
     }
 
-    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
-    .bar-label { width: 60px; font-size: 0.78rem; color: #9ca3af; text-align: right; flex-shrink: 0; }
-    .bar-track { flex: 1; height: 7px; background: #2d2d4e; border-radius: 4px; overflow: hidden; }
-    .bar-fill  { height: 100%; border-radius: 4px; width: 0%; transition: width 0.35s ease; }
-    .bar-val   { width: 34px; font-size: 0.72rem; color: #6b7280; font-family: monospace; flex-shrink: 0; }
+    /* Emotion bars */
+    .bar-row { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+    .bar-label { width: 58px; font-size: 0.75rem; color: var(--muted); text-align: right; flex-shrink: 0; }
+    .bar-track { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; min-width: 0; }
+    .bar-fill  { height: 100%; border-radius: 3px; width: 0%; transition: width .35s ease; }
+    .bar-val   { width: 32px; font-size: 0.7rem; color: var(--muted); font-family: monospace; flex-shrink: 0; }
 
+    /* hidden capture canvas */
     #capture { display: none; }
 
-    @media (max-width: 780px) {
-      .main { flex-direction: column; }
-      .results-panel { width: 100%; }
+    /* ── Responsive breakpoints ─────────── */
+
+    /* Tablet: stack layout, side by side shrinks */
+    @media (max-width: 900px) {
+      .main { grid-template-columns: 1fr 240px; }
+    }
+
+    /* Mobile: full stack */
+    @media (max-width: 640px) {
+      .main {
+        grid-template-columns: 1fr;
+        padding: 10px;
+        gap: 12px;
+      }
+      .video-wrap { aspect-ratio: 16 / 10; }
+      .results { flex-direction: row; flex-wrap: wrap; }
+      .results > .card { flex: 1 1 calc(50% - 7px); min-width: 200px; }
+      .results > .card:first-child { flex: 1 1 100%; }
+
+      /* Full-width buttons on mobile */
+      .controls { flex-direction: column; }
+      .btn { width: 100%; text-align: center; }
+
+      /* Camera bar wrap nicely */
+      .cam-bar { gap: 6px; }
+      #camSelect { min-width: 120px; }
+    }
+
+    @media (max-width: 400px) {
+      .results > .card { flex: 1 1 100%; }
     }
   </style>
 </head>
 <body>
 
+<!-- ── Header ── -->
 <header>
   <div class="logo">🧠</div>
   <div class="header-text">
@@ -242,32 +269,28 @@
   </div>
 </header>
 
+<!-- ── Main ── -->
 <div class="main">
 
-  <!-- ── Video Panel ── -->
-  <div class="video-panel">
+  <!-- Left: video panel -->
+  <div class="panel">
     <div class="panel-header">
       <span class="panel-label">Live Feed</span>
       <span class="fps-badge" id="fpsBadge">0 FPS</span>
     </div>
 
-    <!-- Camera selector row -->
-    <div class="cam-controls">
-      <div class="cam-select-wrap">
-        <label for="camSelect">Camera:</label>
-        <select id="camSelect">
-          <option value="">— select camera —</option>
-        </select>
-      </div>
-      <button class="facing-btn" id="frontBtn" onclick="setFacing('user')" title="Front camera">🤳 Front</button>
-      <button class="facing-btn" id="backBtn"  onclick="setFacing('environment')" title="Rear camera">📷 Back</button>
+    <div class="cam-bar">
+      <label for="camSelect">Camera:</label>
+      <select id="camSelect"><option value="">— select camera —</option></select>
+      <button class="face-btn" id="frontBtn" onclick="setFacing('user')">🤳 Front</button>
+      <button class="face-btn" id="backBtn"  onclick="setFacing('environment')">📷 Back</button>
     </div>
 
     <div class="video-wrap">
       <video id="webcam" autoplay muted playsinline></video>
       <canvas id="overlay"></canvas>
       <div class="placeholder" id="placeholder">
-        <span class="icon">📷</span>
+        <span class="ph-icon">📷</span>
         <p>Click <strong>Start Camera</strong> to begin</p>
       </div>
     </div>
@@ -278,8 +301,8 @@
     </div>
   </div>
 
-  <!-- ── Results Panel ── -->
-  <div class="results-panel">
+  <!-- Right: results -->
+  <div class="results">
 
     <div class="card">
       <div class="panel-header"><span class="panel-label">Detected Emotion</span></div>
@@ -336,9 +359,9 @@
 
   let stream = null, timer = null, busy = false;
   let frames = 0, fpsFrames = 0, fpsTs = Date.now();
-  let facingMode = null; // null = device-id based, 'user'/'environment' = facing based
+  let facingMode = null;
 
-  // ── Build emotion bars ──────────────────────────
+  /* ── Emotion bars ── */
   document.getElementById('barsContainer').innerHTML =
     EMOTIONS.map(e => `
       <div class="bar-row">
@@ -349,87 +372,57 @@
         <span class="bar-val" id="bv-${e}">0%</span>
       </div>`).join('');
 
-  // ── Enumerate cameras ───────────────────────────
+  /* ── Enumerate cameras ── */
   async function populateCameras() {
     try {
-      // Request permission first so labels are populated
       const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
       tmp.getTracks().forEach(t => t.stop());
-
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const cams    = devices.filter(d => d.kind === 'videoinput');
-      const sel     = document.getElementById('camSelect');
-      sel.innerHTML = '';
-
-      if (cams.length === 0) {
-        sel.innerHTML = '<option value="">No cameras found</option>';
-        return;
-      }
-
-      cams.forEach((cam, i) => {
-        const opt   = document.createElement('option');
-        opt.value   = cam.deviceId;
-        opt.text    = cam.label || `Camera ${i + 1}`;
-        sel.appendChild(opt);
-      });
-    } catch (e) {
       const sel = document.getElementById('camSelect');
-      sel.innerHTML = '<option value="">Permission denied</option>';
+      sel.innerHTML = '';
+      devices.filter(d => d.kind === 'videoinput').forEach((cam, i) => {
+        const o = document.createElement('option');
+        o.value = cam.deviceId;
+        o.text  = cam.label || `Camera ${i + 1}`;
+        sel.appendChild(o);
+      });
+      if (!sel.options.length)
+        sel.innerHTML = '<option value="">No cameras found</option>';
+    } catch {
+      document.getElementById('camSelect').innerHTML =
+        '<option value="">Permission denied</option>';
     }
   }
-
-  // Re-enumerate when devices change (plug/unplug)
   navigator.mediaDevices.addEventListener('devicechange', populateCameras);
   populateCameras();
 
-  // ── Facing mode buttons ─────────────────────────
+  /* ── Facing mode ── */
   function setFacing(mode) {
     facingMode = mode;
     document.getElementById('frontBtn').classList.toggle('active', mode === 'user');
     document.getElementById('backBtn').classList.toggle('active', mode === 'environment');
-    if (stream) {
-      stopCamera();
-      startCamera();
-    }
+    if (stream) { stopCamera(true); startCamera(); }
   }
 
-  // ── Build constraints, adapting to whatever works ──
+  /* ── Build getUserMedia constraints ── */
   function buildConstraints() {
-    const deviceId = document.getElementById('camSelect').value;
-
-    // Resolution cascade: try 1280×720, fall back to 640×480, then any
-    const baseVideo = {
-      width:  { ideal: 1280, min: 320 },
-      height: { ideal: 720,  min: 240 }
-    };
-
-    if (facingMode) {
-      return { video: { ...baseVideo, facingMode: { ideal: facingMode } } };
-    }
-    if (deviceId) {
-      return { video: { ...baseVideo, deviceId: { exact: deviceId } } };
-    }
-    return { video: baseVideo };
+    const id   = document.getElementById('camSelect').value;
+    const base = { width: { ideal: 1280, min: 320 }, height: { ideal: 720, min: 240 } };
+    if (facingMode) return { video: { ...base, facingMode: { ideal: facingMode } } };
+    if (id)         return { video: { ...base, deviceId: { exact: id } } };
+    return { video: base };
   }
 
-  // ── Start / stop ────────────────────────────────
+  /* ── Start camera ── */
   async function startCamera() {
-    stopCamera(true); // silent stop if already running
-
-    const constraints = buildConstraints();
+    stopCamera(true);
     try {
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      stream = await navigator.mediaDevices.getUserMedia(buildConstraints());
     } catch (e) {
-      // Exact deviceId failed → fall back to any camera
       if (e.name === 'OverconstrainedError' || e.name === 'NotFoundError') {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        } catch (e2) {
-          return handleCamError(e2);
-        }
-      } else {
-        return handleCamError(e);
-      }
+        try { stream = await navigator.mediaDevices.getUserMedia({ video: true }); }
+        catch (e2) { return camError(e2); }
+      } else { return camError(e); }
     }
 
     video.srcObject = stream;
@@ -438,15 +431,9 @@
     document.getElementById('stopBtn').style.display     = 'inline-block';
     setStatus('on', 'Running');
 
-    // Sync dropdown to actual track settings
-    const track    = stream.getVideoTracks()[0];
-    const settings = track.getSettings();
-    const sel      = document.getElementById('camSelect');
-    if (settings.deviceId) {
-      for (const opt of sel.options) {
-        if (opt.value === settings.deviceId) { sel.value = settings.deviceId; break; }
-      }
-    }
+    // Sync dropdown to actual device
+    const sid = stream.getVideoTracks()[0].getSettings().deviceId;
+    if (sid) document.getElementById('camSelect').value = sid;
 
     video.onloadedmetadata = () => {
       overlay.width = cap.width  = video.videoWidth;
@@ -455,9 +442,10 @@
     };
   }
 
+  /* ── Stop camera ── */
   function stopCamera(silent = false) {
     clearInterval(timer); timer = null;
-    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    stream && stream.getTracks().forEach(t => t.stop()); stream = null;
     ctx.clearRect(0, 0, overlay.width, overlay.height);
     if (!silent) {
       document.getElementById('startBtn').style.display = 'inline-block';
@@ -467,14 +455,14 @@
     }
   }
 
-  function handleCamError(e) {
-    setStatus('err', 'Camera error');
+  function camError(e) {
+    setStatus('err', 'Error');
     document.getElementById('startBtn').style.display = 'inline-block';
     document.getElementById('stopBtn').style.display  = 'none';
     alert('Cannot access camera:\n' + e.message);
   }
 
-  // ── Detection loop ──────────────────────────────
+  /* ── Detection loop ── */
   async function detect() {
     if (busy || !stream) return;
     busy = true;
@@ -492,7 +480,6 @@
 
       frames++;
       document.getElementById('frameCount').textContent = frames;
-
       fpsFrames++;
       const now = Date.now();
       if (now - fpsTs >= 1000) {
@@ -500,63 +487,52 @@
         fpsFrames = 0; fpsTs = now;
       }
 
-      renderBoxes(data.faces || []);
-      renderUI(data.faces || []);
+      drawBoxes(data.faces || []);
+      updatePanel(data.faces || []);
     } catch (e) { console.error(e); }
 
     busy = false;
   }
 
-  // ── Draw face boxes on canvas overlay ──────────
-  function renderBoxes(faces) {
+  /* ── Draw face boxes ── */
+  function drawBoxes(faces) {
     ctx.clearRect(0, 0, overlay.width, overlay.height);
-    // Scale from capture resolution to overlay display resolution
-    const sx = overlay.clientWidth  / cap.width;
-    const sy = overlay.clientHeight / cap.height;
-
     faces.forEach(f => {
-      const x = f.x * sx, y = f.y * sy, w = f.w * sx, h = f.h * sy;
       const color = COLORS[f.emotion] || '#fff';
       const label = `${f.emotion}  ${Math.round(f.confidence * 100)}%`;
 
-      // Box outline
       ctx.strokeStyle = color; ctx.lineWidth = 2.5;
-      ctx.strokeRect(x, y, w, h);
+      ctx.strokeRect(f.x, f.y, f.w, f.h);
 
-      // Label pill
       ctx.font = 'bold 13px Segoe UI, sans-serif';
       const tw = ctx.measureText(label).width;
       ctx.fillStyle = color;
-      ctx.fillRect(x, y - 24, tw + 14, 22);
+      ctx.fillRect(f.x, f.y - 24, tw + 14, 22);
       ctx.fillStyle = '#000';
-      ctx.fillText(label, x + 7, y - 7);
+      ctx.fillText(label, f.x + 7, f.y - 7);
 
-      // Corner accent marks
-      const cs = 14;
+      // Corner marks
+      const cs = 13;
       ctx.strokeStyle = color; ctx.lineWidth = 3;
-      [[x, y, 1, 1],[x+w, y, -1, 1],[x, y+h, 1, -1],[x+w, y+h, -1, -1]]
+      [[f.x, f.y, 1, 1],[f.x+f.w, f.y, -1, 1],[f.x, f.y+f.h, 1, -1],[f.x+f.w, f.y+f.h, -1, -1]]
         .forEach(([cx, cy, dx, dy]) => {
           ctx.beginPath();
-          ctx.moveTo(cx + dx * cs, cy);
-          ctx.lineTo(cx, cy);
-          ctx.lineTo(cx, cy + dy * cs);
+          ctx.moveTo(cx + dx*cs, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + dy*cs);
           ctx.stroke();
         });
     });
   }
 
-  // ── Update right-side results panel ────────────
-  function renderUI(faces) {
+  /* ── Update results panel ── */
+  function updatePanel(faces) {
     document.getElementById('faceCount').textContent = faces.length;
 
     if (!faces.length) {
       document.getElementById('emotionHero').innerHTML = `
-        <div class="idle-state">
-          <span class="icon">🔍</span><p>No face detected</p>
-        </div>`;
+        <div class="idle-state"><span class="icon">🔍</span><p>No face detected</p></div>`;
       EMOTIONS.forEach(e => {
-        document.getElementById('bf-' + e).style.width  = '0%';
-        document.getElementById('bv-' + e).textContent  = '0%';
+        document.getElementById('bf-' + e).style.width = '0%';
+        document.getElementById('bv-' + e).textContent = '0%';
       });
       return;
     }
@@ -565,9 +541,9 @@
     const conf = Math.round(f.confidence * 100);
     document.getElementById('emotionHero').innerHTML = `
       <div class="emotion-hero">
-        <span class="emotion-emoji">${EMOJIS[f.emotion]}</span>
-        <div class="emotion-name" style="color:${COLORS[f.emotion]}">${f.emotion}</div>
-        <div class="emotion-conf">${conf}% confidence${faces.length > 1 ? ' · ' + faces.length + ' faces' : ''}</div>
+        <span class="e-emoji">${EMOJIS[f.emotion]}</span>
+        <div class="e-name" style="color:${COLORS[f.emotion]}">${f.emotion}</div>
+        <div class="e-conf">${conf}% confidence${faces.length > 1 ? ' · ' + faces.length + ' faces' : ''}</div>
       </div>`;
 
     EMOTIONS.forEach(e => {
@@ -578,8 +554,7 @@
   }
 
   function setStatus(cls, txt) {
-    const d = document.getElementById('dot');
-    d.className = 'dot' + (cls ? ' ' + cls : '');
+    document.getElementById('dot').className      = 'dot' + (cls ? ' ' + cls : '');
     document.getElementById('statusTxt').textContent = txt;
   }
 </script>
