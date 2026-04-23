@@ -1,0 +1,26 @@
+# Dataset (large — excluded from repo)
+Emotion_dataset/
+Emotion_dataset.zip
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+env/
+venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Distribution
+.dist/

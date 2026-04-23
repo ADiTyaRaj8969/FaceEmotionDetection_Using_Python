@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Face Emotion Detector</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0d0d1a;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #1a1a3e 0%, #0d0d1a 100%);
+      border-bottom: 2px solid #7c3aed;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .logo { font-size: 1.8rem; }
+    .header-text .title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #a78bfa, #22d3ee);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header-text .subtitle { font-size: 0.8rem; color: #6b7280; margin-top: 2px; }
+
+    .status-pill {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: #1a1a2e;
+      border: 1px solid #2d2d4e;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #4b5563;
+      transition: background 0.3s, box-shadow 0.3s;
+      flex-shrink: 0;
+    }
+    .dot.on  { background: #10b981; box-shadow: 0 0 6px #10b981; }
+    .dot.err { background: #ef4444; }
+
+    /* ── Layout ─────────────────────────── */
+    .main {
+      display: flex;
+      gap: 20px;
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* ── Video panel ────────────────────── */
+    .video-panel {
+      flex: 1; min-width: 0;
+      background: #1a1a2e;
+      border: 1px solid #2d2d4e;
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-header {
+      background: #16213e;
+      padding: 11px 16px;
+      border-bottom: 1px solid #2d2d4e;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .panel-label {
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: #9ca3af;
+    }
+    .fps-badge {
+      font-size: 0.75rem; font-family: monospace;
+      color: #10b981; background: #0d2318;
+      padding: 2px 8px; border-radius: 4px;
+    }
+
+    /* Camera selector row */
+    .cam-controls {
+      background: #111827;
+      border-bottom: 1px solid #2d2d4e;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .cam-select-wrap {
+      display: flex; align-items: center; gap: 7px; flex: 1; min-width: 160px;
+    }
+    .cam-select-wrap label { font-size: 0.75rem; color: #9ca3af; white-space: nowrap; }
+    select#camSelect {
+      flex: 1;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      border: 1px solid #2d2d4e;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    select#camSelect:focus { outline: none; border-color: #7c3aed; }
+
+    .facing-btn {
+      background: #1a1a2e;
+      color: #9ca3af;
+      border: 1px solid #2d2d4e;
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .facing-btn:hover { background: #2d2d4e; }
+    .facing-btn.active { background: #4c1d95; color: #a78bfa; border-color: #7c3aed; }
+
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      background: #000;
+      aspect-ratio: 4/3;
+    }
+    #webcam {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    #overlay {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+    }
+    .placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: #4b5563; gap: 10px;
+    }
+    .placeholder .icon { font-size: 3.5rem; }
+    .placeholder p { font-size: 0.875rem; }
+
+    .controls {
+      padding: 14px 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .btn {
+      padding: 9px 20px; border-radius: 8px; border: none;
+      font-weight: 600; font-size: 0.875rem; cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-start { background: #7c3aed; color: #fff; }
+    .btn-start:hover { background: #6d28d9; }
+    .btn-stop  { background: #374151; color: #e0e0e0; }
+    .btn-stop:hover  { background: #4b5563; }
+
+    /* ── Results panel ──────────────────── */
+    .results-panel {
+      width: 290px; flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .card {
+      background: #1a1a2e;
+      border: 1px solid #2d2d4e;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .card-body { padding: 16px; }
+
+    .emotion-hero {
+      text-align: center;
+      padding: 28px 16px 22px;
+    }
+    .emotion-emoji { font-size: 4rem; line-height: 1; display: block; }
+    .emotion-name  { font-size: 1.6rem; font-weight: 700; margin-top: 8px; }
+    .emotion-conf  { font-size: 0.82rem; color: #6b7280; margin-top: 4px; }
+
+    .idle-state {
+      text-align: center; padding: 32px 16px; color: #4b5563;
+    }
+    .idle-state .icon { font-size: 2.5rem; display: block; margin-bottom: 8px; }
+    .idle-state p { font-size: 0.85rem; }
+
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .stat-box {
+      background: #16213e; border-radius: 10px;
+      padding: 14px; text-align: center;
+    }
+    .stat-val   { font-size: 2rem; font-weight: 700; color: #a78bfa; }
+    .stat-label {
+      font-size: 0.7rem; text-transform: uppercase;
+      letter-spacing: 0.07em; color: #6b7280; margin-top: 2px;
+    }
+
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+    .bar-label { width: 60px; font-size: 0.78rem; color: #9ca3af; text-align: right; flex-shrink: 0; }
+    .bar-track { flex: 1; height: 7px; background: #2d2d4e; border-radius: 4px; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 4px; width: 0%; transition: width 0.35s ease; }
+    .bar-val   { width: 34px; font-size: 0.72rem; color: #6b7280; font-family: monospace; flex-shrink: 0; }
+
+    #capture { display: none; }
+
+    @media (max-width: 780px) {
+      .main { flex-direction: column; }
+      .results-panel { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🧠</div>
+  <div class="header-text">
+    <div class="title">Face Emotion Detector</div>
+    <div class="subtitle">Real-time AI-powered emotion recognition</div>
+  </div>
+  <div class="status-pill">
+    <span class="dot" id="dot"></span>
+    <span id="statusTxt">Idle</span>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ── Video Panel ── -->
+  <div class="video-panel">
+    <div class="panel-header">
+      <span class="panel-label">Live Feed</span>
+      <span class="fps-badge" id="fpsBadge">0 FPS</span>
+    </div>
+
+    <!-- Camera selector row -->
+    <div class="cam-controls">
+      <div class="cam-select-wrap">
+        <label for="camSelect">Camera:</label>
+        <select id="camSelect">
+          <option value="">— select camera —</option>
+        </select>
+      </div>
+      <button class="facing-btn" id="frontBtn" onclick="setFacing('user')" title="Front camera">🤳 Front</button>
+      <button class="facing-btn" id="backBtn"  onclick="setFacing('environment')" title="Rear camera">📷 Back</button>
+    </div>
+
+    <div class="video-wrap">
+      <video id="webcam" autoplay muted playsinline></video>
+      <canvas id="overlay"></canvas>
+      <div class="placeholder" id="placeholder">
+        <span class="icon">📷</span>
+        <p>Click <strong>Start Camera</strong> to begin</p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-start" id="startBtn" onclick="startCamera()">▶ Start Camera</button>
+      <button class="btn btn-stop"  id="stopBtn"  onclick="stopCamera()" style="display:none">■ Stop</button>
+    </div>
+  </div>
+
+  <!-- ── Results Panel ── -->
+  <div class="results-panel">
+
+    <div class="card">
+      <div class="panel-header"><span class="panel-label">Detected Emotion</span></div>
+      <div id="emotionHero">
+        <div class="idle-state">
+          <span class="icon">🔍</span>
+          <p>Start camera to detect emotions</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="panel-header"><span class="panel-label">Stats</span></div>
+      <div class="card-body">
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-val" id="faceCount">0</div>
+            <div class="stat-label">Faces</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="frameCount">0</div>
+            <div class="stat-label">Frames</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="panel-header"><span class="panel-label">Emotion Scores</span></div>
+      <div class="card-body" id="barsContainer"></div>
+    </div>
+
+  </div>
+</div>
+
+<canvas id="capture"></canvas>
+
+<script>
+  const EMOTIONS = ['Angry','Disgust','Fear','Happy','Sad','Surprise','Neutral'];
+  const COLORS   = {
+    Angry:'#ef4444', Disgust:'#22c55e', Fear:'#8b5cf6',
+    Happy:'#eab308', Sad:'#3b82f6', Surprise:'#ec4899', Neutral:'#9ca3af'
+  };
+  const EMOJIS   = {
+    Angry:'😠', Disgust:'🤢', Fear:'😨',
+    Happy:'😊', Sad:'😢', Surprise:'😲', Neutral:'😐'
+  };
+
+  const video   = document.getElementById('webcam');
+  const overlay = document.getElementById('overlay');
+  const ctx     = overlay.getContext('2d');
+  const cap     = document.getElementById('capture');
+  const capCtx  = cap.getContext('2d');
+
+  let stream = null, timer = null, busy = false;
+  let frames = 0, fpsFrames = 0, fpsTs = Date.now();
+  let facingMode = null; // null = device-id based, 'user'/'environment' = facing based
+
+  // ── Build emotion bars ──────────────────────────
+  document.getElementById('barsContainer').innerHTML =
+    EMOTIONS.map(e => `
+      <div class="bar-row">
+        <span class="bar-label">${e}</span>
+        <div class="bar-track">
+          <div class="bar-fill" id="bf-${e}" style="background:${COLORS[e]}"></div>
+        </div>
+        <span class="bar-val" id="bv-${e}">0%</span>
+      </div>`).join('');
+
+  // ── Enumerate cameras ───────────────────────────
+  async function populateCameras() {
+    try {
+      // Request permission first so labels are populated
+      const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+      tmp.getTracks().forEach(t => t.stop());
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams    = devices.filter(d => d.kind === 'videoinput');
+      const sel     = document.getElementById('camSelect');
+      sel.innerHTML = '';
+
+      if (cams.length === 0) {
+        sel.innerHTML = '<option value="">No cameras found</option>';
+        return;
+      }
+
+      cams.forEach((cam, i) => {
+        const opt   = document.createElement('option');
+        opt.value   = cam.deviceId;
+        opt.text    = cam.label || `Camera ${i + 1}`;
+        sel.appendChild(opt);
+      });
+    } catch (e) {
+      const sel = document.getElementById('camSelect');
+      sel.innerHTML = '<option value="">Permission denied</option>';
+    }
+  }
+
+  // Re-enumerate when devices change (plug/unplug)
+  navigator.mediaDevices.addEventListener('devicechange', populateCameras);
+  populateCameras();
+
+  // ── Facing mode buttons ─────────────────────────
+  function setFacing(mode) {
+    facingMode = mode;
+    document.getElementById('frontBtn').classList.toggle('active', mode === 'user');
+    document.getElementById('backBtn').classList.toggle('active', mode === 'environment');
+    if (stream) {
+      stopCamera();
+      startCamera();
+    }
+  }
+
+  // ── Build constraints, adapting to whatever works ──
+  function buildConstraints() {
+    const deviceId = document.getElementById('camSelect').value;
+
+    // Resolution cascade: try 1280×720, fall back to 640×480, then any
+    const baseVideo = {
+      width:  { ideal: 1280, min: 320 },
+      height: { ideal: 720,  min: 240 }
+    };
+
+    if (facingMode) {
+      return { video: { ...baseVideo, facingMode: { ideal: facingMode } } };
+    }
+    if (deviceId) {
+      return { video: { ...baseVideo, deviceId: { exact: deviceId } } };
+    }
+    return { video: baseVideo };
+  }
+
+  // ── Start / stop ────────────────────────────────
+  async function startCamera() {
+    stopCamera(true); // silent stop if already running
+
+    const constraints = buildConstraints();
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (e) {
+      // Exact deviceId failed → fall back to any camera
+      if (e.name === 'OverconstrainedError' || e.name === 'NotFoundError') {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        } catch (e2) {
+          return handleCamError(e2);
+        }
+      } else {
+        return handleCamError(e);
+      }
+    }
+
+    video.srcObject = stream;
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('startBtn').style.display    = 'none';
+    document.getElementById('stopBtn').style.display     = 'inline-block';
+    setStatus('on', 'Running');
+
+    // Sync dropdown to actual track settings
+    const track    = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    const sel      = document.getElementById('camSelect');
+    if (settings.deviceId) {
+      for (const opt of sel.options) {
+        if (opt.value === settings.deviceId) { sel.value = settings.deviceId; break; }
+      }
+    }
+
+    video.onloadedmetadata = () => {
+      overlay.width = cap.width  = video.videoWidth;
+      overlay.height = cap.height = video.videoHeight;
+      timer = setInterval(detect, 500);
+    };
+  }
+
+  function stopCamera(silent = false) {
+    clearInterval(timer); timer = null;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    if (!silent) {
+      document.getElementById('startBtn').style.display = 'inline-block';
+      document.getElementById('stopBtn').style.display  = 'none';
+      setStatus('', 'Idle');
+      document.getElementById('fpsBadge').textContent = '0 FPS';
+    }
+  }
+
+  function handleCamError(e) {
+    setStatus('err', 'Camera error');
+    document.getElementById('startBtn').style.display = 'inline-block';
+    document.getElementById('stopBtn').style.display  = 'none';
+    alert('Cannot access camera:\n' + e.message);
+  }
+
+  // ── Detection loop ──────────────────────────────
+  async function detect() {
+    if (busy || !stream) return;
+    busy = true;
+
+    capCtx.drawImage(video, 0, 0, cap.width, cap.height);
+    const img = cap.toDataURL('image/jpeg', 0.8);
+
+    try {
+      const res  = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: img })
+      });
+      const data = await res.json();
+
+      frames++;
+      document.getElementById('frameCount').textContent = frames;
+
+      fpsFrames++;
+      const now = Date.now();
+      if (now - fpsTs >= 1000) {
+        document.getElementById('fpsBadge').textContent = fpsFrames + ' FPS';
+        fpsFrames = 0; fpsTs = now;
+      }
+
+      renderBoxes(data.faces || []);
+      renderUI(data.faces || []);
+    } catch (e) { console.error(e); }
+
+    busy = false;
+  }
+
+  // ── Draw face boxes on canvas overlay ──────────
+  function renderBoxes(faces) {
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    // Scale from capture resolution to overlay display resolution
+    const sx = overlay.clientWidth  / cap.width;
+    const sy = overlay.clientHeight / cap.height;
+
+    faces.forEach(f => {
+      const x = f.x * sx, y = f.y * sy, w = f.w * sx, h = f.h * sy;
+      const color = COLORS[f.emotion] || '#fff';
+      const label = `${f.emotion}  ${Math.round(f.confidence * 100)}%`;
+
+      // Box outline
+      ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+      ctx.strokeRect(x, y, w, h);
+
+      // Label pill
+      ctx.font = 'bold 13px Segoe UI, sans-serif';
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y - 24, tw + 14, 22);
+      ctx.fillStyle = '#000';
+      ctx.fillText(label, x + 7, y - 7);
+
+      // Corner accent marks
+      const cs = 14;
+      ctx.strokeStyle = color; ctx.lineWidth = 3;
+      [[x, y, 1, 1],[x+w, y, -1, 1],[x, y+h, 1, -1],[x+w, y+h, -1, -1]]
+        .forEach(([cx, cy, dx, dy]) => {
+          ctx.beginPath();
+          ctx.moveTo(cx + dx * cs, cy);
+          ctx.lineTo(cx, cy);
+          ctx.lineTo(cx, cy + dy * cs);
+          ctx.stroke();
+        });
+    });
+  }
+
+  // ── Update right-side results panel ────────────
+  function renderUI(faces) {
+    document.getElementById('faceCount').textContent = faces.length;
+
+    if (!faces.length) {
+      document.getElementById('emotionHero').innerHTML = `
+        <div class="idle-state">
+          <span class="icon">🔍</span><p>No face detected</p>
+        </div>`;
+      EMOTIONS.forEach(e => {
+        document.getElementById('bf-' + e).style.width  = '0%';
+        document.getElementById('bv-' + e).textContent  = '0%';
+      });
+      return;
+    }
+
+    const f    = faces[0];
+    const conf = Math.round(f.confidence * 100);
+    document.getElementById('emotionHero').innerHTML = `
+      <div class="emotion-hero">
+        <span class="emotion-emoji">${EMOJIS[f.emotion]}</span>
+        <div class="emotion-name" style="color:${COLORS[f.emotion]}">${f.emotion}</div>
+        <div class="emotion-conf">${conf}% confidence${faces.length > 1 ? ' · ' + faces.length + ' faces' : ''}</div>
+      </div>`;
+
+    EMOTIONS.forEach(e => {
+      const pct = (f.scores || {})[e] || 0;
+      document.getElementById('bf-' + e).style.width = pct + '%';
+      document.getElementById('bv-' + e).textContent  = pct.toFixed(0) + '%';
+    });
+  }
+
+  function setStatus(cls, txt) {
+    const d = document.getElementById('dot');
+    d.className = 'dot' + (cls ? ' ' + cls : '');
+    document.getElementById('statusTxt').textContent = txt;
+  }
+</script>
+</body>
+</html>
