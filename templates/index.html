@@ -8,255 +8,234 @@
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg:      #0d0d1a;
-      --surface: #1a1a2e;
-      --card:    #16213e;
-      --border:  #2d2d4e;
-      --accent:  #7c3aed;
-      --accent2: #22d3ee;
-      --text:    #e0e0e0;
-      --muted:   #6b7280;
-      --radius:  12px;
+      --bg:      #0a0e1f;
+      --surface: #131929;
+      --card:    #1a2236;
+      --border:  #2a3553;
+      --r: 13px;
+
+      /* Lively gradient palette */
+      --g1: #ff6b35;   /* orange */
+      --g2: #f7c59f;   /* peach */
+      --g3: #06d6a0;   /* mint */
+      --g4: #00b4d8;   /* sky */
+      --g5: #ff4da6;   /* pink */
+      --g6: #ffe347;   /* yellow */
+
+      --text:  #f0f4ff;
+      --muted: #7a8baa;
     }
 
     html { font-size: 16px; }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      min-height: 100vh;
-    }
+    body  { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
 
-    /* ── Header ─────────────────────────── */
+    /* ── Animated gradient header ──────── */
+    @keyframes hueShift { 0%{filter:hue-rotate(0deg)} 100%{filter:hue-rotate(360deg)} }
+    @keyframes pulse    { 0%,100%{box-shadow:0 0 6px #10b981} 50%{box-shadow:0 0 14px #10b981,0 0 28px #10b981aa} }
+
     header {
-      background: linear-gradient(135deg, #1a1a3e 0%, var(--bg) 100%);
-      border-bottom: 2px solid var(--accent);
-      padding: clamp(10px, 2vw, 16px) clamp(14px, 3vw, 24px);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
+      background: linear-gradient(135deg, #1b1040 0%, #0a0e1f 100%);
+      border-bottom: 2px solid transparent;
+      background-clip: padding-box;
+      position: relative;
+      padding: clamp(10px,2vw,16px) clamp(14px,3vw,24px);
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      overflow: hidden;
     }
-    .logo { font-size: clamp(1.4rem, 4vw, 1.9rem); line-height: 1; }
+    /* Rainbow underline */
+    header::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--g1), var(--g6), var(--g3), var(--g4), var(--g5), var(--g1));
+      background-size: 300% 100%;
+      animation: slide 4s linear infinite;
+    }
+    @keyframes slide { 0%{background-position:0% 0%} 100%{background-position:300% 0%} }
+
+    .logo { font-size: clamp(1.5rem,4vw,2rem); filter: drop-shadow(0 0 8px rgba(255,107,53,.6)); }
+
     .header-text .title {
-      font-size: clamp(1rem, 3vw, 1.35rem);
-      font-weight: 700;
-      background: linear-gradient(90deg, #a78bfa, var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      white-space: nowrap;
+      font-size: clamp(1rem,3vw,1.4rem);
+      font-weight: 800; letter-spacing: -.01em;
+      background: linear-gradient(90deg, var(--g1), var(--g6), var(--g3));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .header-text .subtitle {
-      font-size: clamp(0.65rem, 1.8vw, 0.8rem);
-      color: var(--muted);
-      margin-top: 2px;
-    }
+    .header-text .subtitle { font-size: clamp(.65rem,1.8vw,.8rem); color: var(--muted); margin-top: 2px; }
+
     .status-pill {
       margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 5px 12px;
-      font-size: clamp(0.7rem, 1.8vw, 0.8rem);
-      white-space: nowrap;
+      display: flex; align-items: center; gap: 7px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 999px; padding: 5px 14px;
+      font-size: clamp(.68rem,1.8vw,.8rem); white-space: nowrap;
     }
     .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: #4b5563;
-      transition: background .3s, box-shadow .3s;
-      flex-shrink: 0;
+      width: 9px; height: 9px; border-radius: 50%; background: #374151;
+      transition: background .3s, box-shadow .3s; flex-shrink: 0;
     }
-    .dot.on  { background: #10b981; box-shadow: 0 0 6px #10b981; }
+    .dot.on  { background: #10b981; animation: pulse 1.8s ease-in-out infinite; }
     .dot.err { background: #ef4444; }
 
-    /* ── Main layout ────────────────────── */
+    /* ── Layout ──────────────────────────── */
     .main {
       display: grid;
-      grid-template-columns: 1fr 280px;
+      grid-template-columns: 1fr 284px;
       gap: 18px;
-      padding: clamp(12px, 2.5vw, 24px);
-      max-width: 1200px;
-      margin: 0 auto;
+      padding: clamp(12px,2.5vw,22px);
+      max-width: 1200px; margin: 0 auto;
       align-items: start;
     }
 
-    /* ── Panel shared ───────────────────── */
-    .panel {
+    /* ── Video panel ─────────────────────── */
+    .vpanel {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
+      border-radius: var(--r); overflow: hidden;
+      position: relative;
     }
-    .panel-header {
+    /* glow border on video panel */
+    .vpanel::before {
+      content:''; position:absolute; inset:-1px; border-radius:var(--r);
+      background: linear-gradient(135deg, var(--g1), var(--g4), var(--g5));
+      z-index:0; opacity:.5;
+    }
+    .vpanel > * { position:relative; z-index:1; }
+
+    .panel-hdr {
       background: var(--card);
       padding: 10px 14px;
       border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
+      display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
     }
-    .panel-label {
-      font-size: 0.7rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .1em;
-      color: var(--muted);
+    .panel-lbl {
+      font-size: .7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .1em; color: var(--muted);
     }
     .fps-badge {
-      font-size: 0.72rem; font-family: monospace;
-      color: #10b981; background: #0d2318;
-      padding: 2px 8px; border-radius: 4px;
+      font-size: .72rem; font-family: monospace;
+      background: linear-gradient(90deg,#0d2318,#0d2318);
+      color: var(--g3); padding: 2px 9px; border-radius: 5px;
+      border: 1px solid #06d6a044;
     }
 
-    /* ── Camera controls bar ────────────── */
+    /* ── Camera selector bar ─────────────── */
     .cam-bar {
-      background: #111827;
+      background: #0e1423;
       border-bottom: 1px solid var(--border);
       padding: 8px 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     }
-    .cam-bar label {
-      font-size: 0.72rem; color: var(--muted); white-space: nowrap; flex-shrink: 0;
-    }
+    .cam-bar label { font-size:.72rem; color:var(--muted); white-space:nowrap; flex-shrink:0; }
     #camSelect {
-      flex: 1; min-width: 0;
-      background: var(--surface); color: var(--text);
-      border: 1px solid var(--border); border-radius: 6px;
-      padding: 5px 8px; font-size: 0.78rem; cursor: pointer;
+      flex:1; min-width:0;
+      background:var(--card); color:var(--text);
+      border:1px solid var(--border); border-radius:6px;
+      padding:5px 8px; font-size:.78rem; cursor:pointer;
     }
-    #camSelect:focus { outline: none; border-color: var(--accent); }
+    #camSelect:focus { outline:none; border-color:var(--g1); }
     .face-btn {
-      background: var(--surface); color: var(--muted);
-      border: 1px solid var(--border); border-radius: 6px;
-      padding: 5px 10px; font-size: 0.75rem; cursor: pointer;
-      transition: background .2s; white-space: nowrap; flex-shrink: 0;
+      background:var(--card); color:var(--muted);
+      border:1px solid var(--border); border-radius:6px;
+      padding:5px 10px; font-size:.75rem; cursor:pointer;
+      transition:all .2s; white-space:nowrap; flex-shrink:0;
     }
-    .face-btn:hover   { background: var(--border); }
-    .face-btn.active  { background: #4c1d95; color: #a78bfa; border-color: var(--accent); }
+    .face-btn:hover  { background:var(--border); color:var(--text); }
+    .face-btn.active { background:#2a1200; color:var(--g1); border-color:var(--g1); }
 
-    /* ── Video area ─────────────────────── */
-    .video-wrap {
-      position: relative;
-      width: 100%; background: #000;
-      /* 4:3 on desktop, allow taller on mobile */
-      aspect-ratio: 4 / 3;
-    }
-    #webcam {
-      width: 100%; height: 100%;
-      object-fit: cover; display: block;
-    }
-    #overlay {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      pointer-events: none;
-    }
+    /* ── Video area ──────────────────────── */
+    .video-wrap { position:relative; width:100%; background:#000; aspect-ratio:4/3; }
+    #webcam    { width:100%; height:100%; object-fit:cover; display:block; }
+    #overlay   { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
     .placeholder {
-      position: absolute; inset: 0;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      color: #4b5563; gap: 10px; padding: 20px; text-align: center;
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      color:#374151; gap:10px; padding:20px; text-align:center;
     }
-    .placeholder .ph-icon { font-size: clamp(2rem, 8vw, 3.5rem); }
-    .placeholder p { font-size: clamp(0.78rem, 2vw, 0.9rem); }
+    .placeholder .ph-icon { font-size:clamp(2rem,8vw,3.5rem); }
+    .placeholder p { font-size:clamp(.78rem,2vw,.9rem); }
 
-    /* ── Controls row ───────────────────── */
-    .controls {
-      padding: 12px 14px;
-      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    }
+    /* ── Controls ────────────────────────── */
+    .controls { padding:12px 14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
     .btn {
-      padding: 9px 18px; border-radius: 8px; border: none;
-      font-weight: 600; font-size: 0.85rem; cursor: pointer;
-      transition: opacity .2s, transform .1s;
+      padding:10px 22px; border-radius:9px; border:none;
+      font-weight:700; font-size:.87rem; cursor:pointer;
+      transition:all .2s; letter-spacing:.01em;
     }
-    .btn:active { transform: scale(.97); }
-    .btn-start { background: var(--accent); color: #fff; }
-    .btn-start:hover { background: #6d28d9; }
-    .btn-stop  { background: #374151; color: var(--text); }
-    .btn-stop:hover  { background: #4b5563; }
+    .btn:active { transform:scale(.96); }
+    .btn-start {
+      background: linear-gradient(135deg, var(--g1), #e05a28);
+      color:#fff; box-shadow:0 4px 18px rgba(255,107,53,.45);
+    }
+    .btn-start:hover { box-shadow:0 6px 24px rgba(255,107,53,.65); transform:translateY(-1px); }
+    .btn-stop { background:var(--card); color:var(--text); border:1px solid var(--border); }
+    .btn-stop:hover  { background:#2a3553; }
 
-    /* ── Results panel stack ────────────── */
-    .results { display: flex; flex-direction: column; gap: 14px; }
+    /* ── Results panel ───────────────────── */
+    .results { display:flex; flex-direction:column; gap:14px; }
+
     .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--r); overflow:hidden;
     }
-    .card-body { padding: 14px; }
+    .card-body { padding:14px; }
 
     /* Emotion hero */
-    .emotion-hero { text-align: center; padding: clamp(16px, 3vw, 28px) 14px clamp(14px, 2.5vw, 22px); }
-    .e-emoji { font-size: clamp(2.8rem, 7vw, 4rem); line-height: 1; display: block; }
-    .e-name  { font-size: clamp(1.2rem, 3.5vw, 1.6rem); font-weight: 700; margin-top: 8px; }
-    .e-conf  { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
-    .idle-state {
-      text-align: center; padding: clamp(20px, 4vw, 32px) 14px; color: #4b5563;
+    @keyframes glow {
+      0%,100% { text-shadow: 0 0 12px currentColor; }
+      50%      { text-shadow: 0 0 24px currentColor, 0 0 48px currentColor; }
     }
-    .idle-state .icon { font-size: clamp(2rem, 5vw, 2.5rem); display: block; margin-bottom: 8px; }
-    .idle-state p { font-size: 0.82rem; }
+    .emotion-hero { text-align:center; padding:clamp(18px,3vw,28px) 14px clamp(14px,2.5vw,22px); }
+    .e-emoji { font-size:clamp(3rem,7vw,4.2rem); display:block; line-height:1; }
+    .e-name  {
+      font-size:clamp(1.3rem,3.5vw,1.7rem); font-weight:800; margin-top:8px;
+      animation: glow 2s ease-in-out infinite;
+    }
+    .e-conf  { font-size:.8rem; color:var(--muted); margin-top:5px; }
+
+    .idle-state { text-align:center; padding:clamp(20px,4vw,32px) 14px; color:#374151; }
+    .idle-state .icon { font-size:clamp(2rem,5vw,2.5rem); display:block; margin-bottom:8px; }
+    .idle-state p { font-size:.82rem; }
 
     /* Stats */
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .stat-box { background: var(--card); border-radius: 9px; padding: 12px; text-align: center; }
-    .stat-val   { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 700; color: #a78bfa; }
-    .stat-label {
-      font-size: 0.68rem; text-transform: uppercase;
-      letter-spacing: .07em; color: var(--muted); margin-top: 2px;
+    .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .stat-box { background:var(--card); border-radius:9px; padding:12px; text-align:center; }
+    .stat-val {
+      font-size:clamp(1.5rem,4vw,2rem); font-weight:800;
+      background: linear-gradient(135deg, var(--g1), var(--g6));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
     }
+    .stat-label { font-size:.68rem; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-top:2px; }
 
     /* Emotion bars */
-    .bar-row { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
-    .bar-label { width: 58px; font-size: 0.75rem; color: var(--muted); text-align: right; flex-shrink: 0; }
-    .bar-track { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; min-width: 0; }
-    .bar-fill  { height: 100%; border-radius: 3px; width: 0%; transition: width .35s ease; }
-    .bar-val   { width: 32px; font-size: 0.7rem; color: var(--muted); font-family: monospace; flex-shrink: 0; }
+    .bar-row { display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+    .bar-label { width:58px; font-size:.75rem; color:var(--muted); text-align:right; flex-shrink:0; }
+    .bar-track { flex:1; height:7px; background:var(--card); border-radius:4px; overflow:hidden; min-width:0; }
+    .bar-fill  { height:100%; border-radius:4px; width:0%; transition:width .35s ease; }
+    .bar-val   { width:32px; font-size:.7rem; color:var(--muted); font-family:monospace; flex-shrink:0; }
 
-    /* hidden capture canvas */
-    #capture { display: none; }
+    #capture { display:none; }
 
-    /* ── Responsive breakpoints ─────────── */
-
-    /* Tablet: stack layout, side by side shrinks */
-    @media (max-width: 900px) {
-      .main { grid-template-columns: 1fr 240px; }
+    /* ── Responsive ──────────────────────── */
+    @media (max-width:900px) {
+      .main { grid-template-columns:1fr 240px; }
     }
-
-    /* Mobile: full stack */
-    @media (max-width: 640px) {
-      .main {
-        grid-template-columns: 1fr;
-        padding: 10px;
-        gap: 12px;
-      }
-      .video-wrap { aspect-ratio: 16 / 10; }
-      .results { flex-direction: row; flex-wrap: wrap; }
-      .results > .card { flex: 1 1 calc(50% - 7px); min-width: 200px; }
-      .results > .card:first-child { flex: 1 1 100%; }
-
-      /* Full-width buttons on mobile */
-      .controls { flex-direction: column; }
-      .btn { width: 100%; text-align: center; }
-
-      /* Camera bar wrap nicely */
-      .cam-bar { gap: 6px; }
-      #camSelect { min-width: 120px; }
+    @media (max-width:640px) {
+      .main { grid-template-columns:1fr; padding:10px; gap:12px; }
+      .video-wrap { aspect-ratio:16/10; }
+      .results { flex-direction:row; flex-wrap:wrap; }
+      .results > .card { flex:1 1 calc(50% - 7px); min-width:190px; }
+      .results > .card:first-child { flex:1 1 100%; }
+      .controls { flex-direction:column; }
+      .btn { width:100%; text-align:center; }
     }
-
-    @media (max-width: 400px) {
-      .results > .card { flex: 1 1 100%; }
+    @media (max-width:400px) {
+      .results > .card { flex:1 1 100%; }
     }
   </style>
 </head>
 <body>
 
-<!-- ── Header ── -->
 <header>
   <div class="logo">🧠</div>
   <div class="header-text">
@@ -269,13 +248,11 @@
   </div>
 </header>
 
-<!-- ── Main ── -->
 <div class="main">
 
-  <!-- Left: video panel -->
-  <div class="panel">
-    <div class="panel-header">
-      <span class="panel-label">Live Feed</span>
+  <div class="vpanel">
+    <div class="panel-hdr">
+      <span class="panel-lbl">Live Feed</span>
       <span class="fps-badge" id="fpsBadge">0 FPS</span>
     </div>
 
@@ -301,11 +278,10 @@
     </div>
   </div>
 
-  <!-- Right: results -->
   <div class="results">
 
     <div class="card">
-      <div class="panel-header"><span class="panel-label">Detected Emotion</span></div>
+      <div class="panel-hdr"><span class="panel-lbl">Detected Emotion</span></div>
       <div id="emotionHero">
         <div class="idle-state">
           <span class="icon">🔍</span>
@@ -315,7 +291,7 @@
     </div>
 
     <div class="card">
-      <div class="panel-header"><span class="panel-label">Stats</span></div>
+      <div class="panel-hdr"><span class="panel-lbl">Stats</span></div>
       <div class="card-body">
         <div class="stats-grid">
           <div class="stat-box">
@@ -331,7 +307,7 @@
     </div>
 
     <div class="card">
-      <div class="panel-header"><span class="panel-label">Emotion Scores</span></div>
+      <div class="panel-hdr"><span class="panel-lbl">Emotion Scores</span></div>
       <div class="card-body" id="barsContainer"></div>
     </div>
 
@@ -343,219 +319,194 @@
 <script>
   const EMOTIONS = ['Angry','Disgust','Fear','Happy','Sad','Surprise','Neutral'];
   const COLORS   = {
-    Angry:'#ef4444', Disgust:'#22c55e', Fear:'#8b5cf6',
-    Happy:'#eab308', Sad:'#3b82f6', Surprise:'#ec4899', Neutral:'#9ca3af'
+    Angry:'#ff4d4d', Disgust:'#00e676', Fear:'#c158ff',
+    Happy:'#ffe347', Sad:'#4db8ff', Surprise:'#ff4da6', Neutral:'#90a4ae'
   };
   const EMOJIS   = {
     Angry:'😠', Disgust:'🤢', Fear:'😨',
     Happy:'😊', Sad:'😢', Surprise:'😲', Neutral:'😐'
   };
 
-  const video   = document.getElementById('webcam');
-  const overlay = document.getElementById('overlay');
-  const ctx     = overlay.getContext('2d');
-  const cap     = document.getElementById('capture');
-  const capCtx  = cap.getContext('2d');
+  const video  = document.getElementById('webcam');
+  const overlay= document.getElementById('overlay');
+  const ctx    = overlay.getContext('2d');
+  const cap    = document.getElementById('capture');
+  const capCtx = cap.getContext('2d');
 
-  let stream = null, timer = null, busy = false;
-  let frames = 0, fpsFrames = 0, fpsTs = Date.now();
-  let facingMode = null;
+  let stream=null, timer=null, busy=false;
+  let frames=0, fpsFrames=0, fpsTs=Date.now();
+  let facingMode=null;
 
-  /* ── Emotion bars ── */
+  /* ── Bars ── */
   document.getElementById('barsContainer').innerHTML =
-    EMOTIONS.map(e => `
+    EMOTIONS.map(e=>`
       <div class="bar-row">
         <span class="bar-label">${e}</span>
         <div class="bar-track">
-          <div class="bar-fill" id="bf-${e}" style="background:${COLORS[e]}"></div>
+          <div class="bar-fill" id="bf-${e}" style="background:${COLORS[e]};box-shadow:0 0 6px ${COLORS[e]}88"></div>
         </div>
         <span class="bar-val" id="bv-${e}">0%</span>
       </div>`).join('');
 
-  /* ── Enumerate cameras ── */
-  async function populateCameras() {
-    try {
-      const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
-      tmp.getTracks().forEach(t => t.stop());
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const sel = document.getElementById('camSelect');
-      sel.innerHTML = '';
-      devices.filter(d => d.kind === 'videoinput').forEach((cam, i) => {
-        const o = document.createElement('option');
-        o.value = cam.deviceId;
-        o.text  = cam.label || `Camera ${i + 1}`;
-        sel.appendChild(o);
+  /* ── Camera enum ── */
+  async function populateCameras(){
+    try{
+      const tmp=await navigator.mediaDevices.getUserMedia({video:true});
+      tmp.getTracks().forEach(t=>t.stop());
+      const devices=await navigator.mediaDevices.enumerateDevices();
+      const sel=document.getElementById('camSelect'); sel.innerHTML='';
+      devices.filter(d=>d.kind==='videoinput').forEach((cam,i)=>{
+        const o=document.createElement('option');
+        o.value=cam.deviceId; o.text=cam.label||`Camera ${i+1}`; sel.appendChild(o);
       });
-      if (!sel.options.length)
-        sel.innerHTML = '<option value="">No cameras found</option>';
-    } catch {
-      document.getElementById('camSelect').innerHTML =
-        '<option value="">Permission denied</option>';
+      if(!sel.options.length) sel.innerHTML='<option value="">No cameras found</option>';
+    }catch{
+      document.getElementById('camSelect').innerHTML='<option value="">Permission denied</option>';
     }
   }
-  navigator.mediaDevices.addEventListener('devicechange', populateCameras);
+  navigator.mediaDevices.addEventListener('devicechange',populateCameras);
   populateCameras();
 
-  /* ── Facing mode ── */
-  function setFacing(mode) {
-    facingMode = mode;
-    document.getElementById('frontBtn').classList.toggle('active', mode === 'user');
-    document.getElementById('backBtn').classList.toggle('active', mode === 'environment');
-    if (stream) { stopCamera(true); startCamera(); }
+  function setFacing(mode){
+    facingMode=mode;
+    document.getElementById('frontBtn').classList.toggle('active',mode==='user');
+    document.getElementById('backBtn').classList.toggle('active',mode==='environment');
+    if(stream){stopCamera(true);startCamera();}
   }
 
-  /* ── Build getUserMedia constraints ── */
-  function buildConstraints() {
-    const id   = document.getElementById('camSelect').value;
-    const base = { width: { ideal: 1280, min: 320 }, height: { ideal: 720, min: 240 } };
-    if (facingMode) return { video: { ...base, facingMode: { ideal: facingMode } } };
-    if (id)         return { video: { ...base, deviceId: { exact: id } } };
-    return { video: base };
+  function buildConstraints(){
+    const id=document.getElementById('camSelect').value;
+    const base={width:{ideal:1280,min:320},height:{ideal:720,min:240}};
+    if(facingMode) return{video:{...base,facingMode:{ideal:facingMode}}};
+    if(id)         return{video:{...base,deviceId:{exact:id}}};
+    return{video:base};
   }
 
-  /* ── Start camera ── */
-  async function startCamera() {
+  async function startCamera(){
     stopCamera(true);
-    try {
-      stream = await navigator.mediaDevices.getUserMedia(buildConstraints());
-    } catch (e) {
-      if (e.name === 'OverconstrainedError' || e.name === 'NotFoundError') {
-        try { stream = await navigator.mediaDevices.getUserMedia({ video: true }); }
-        catch (e2) { return camError(e2); }
-      } else { return camError(e); }
+    try{ stream=await navigator.mediaDevices.getUserMedia(buildConstraints()); }
+    catch(e){
+      if(e.name==='OverconstrainedError'||e.name==='NotFoundError'){
+        try{ stream=await navigator.mediaDevices.getUserMedia({video:true}); }
+        catch(e2){ return camErr(e2); }
+      } else return camErr(e);
     }
-
-    video.srcObject = stream;
-    document.getElementById('placeholder').style.display = 'none';
-    document.getElementById('startBtn').style.display    = 'none';
-    document.getElementById('stopBtn').style.display     = 'inline-block';
-    setStatus('on', 'Running');
-
-    // Sync dropdown to actual device
-    const sid = stream.getVideoTracks()[0].getSettings().deviceId;
-    if (sid) document.getElementById('camSelect').value = sid;
-
-    video.onloadedmetadata = () => {
-      overlay.width = cap.width  = video.videoWidth;
-      overlay.height = cap.height = video.videoHeight;
-      timer = setInterval(detect, 500);
+    video.srcObject=stream;
+    document.getElementById('placeholder').style.display='none';
+    document.getElementById('startBtn').style.display='none';
+    document.getElementById('stopBtn').style.display='inline-block';
+    setStatus('on','Running');
+    const sid=stream.getVideoTracks()[0].getSettings().deviceId;
+    if(sid) document.getElementById('camSelect').value=sid;
+    video.onloadedmetadata=()=>{
+      overlay.width=cap.width=video.videoWidth;
+      overlay.height=cap.height=video.videoHeight;
+      timer=setInterval(detect,500);
     };
   }
 
-  /* ── Stop camera ── */
-  function stopCamera(silent = false) {
-    clearInterval(timer); timer = null;
-    stream && stream.getTracks().forEach(t => t.stop()); stream = null;
-    ctx.clearRect(0, 0, overlay.width, overlay.height);
-    if (!silent) {
-      document.getElementById('startBtn').style.display = 'inline-block';
-      document.getElementById('stopBtn').style.display  = 'none';
-      setStatus('', 'Idle');
-      document.getElementById('fpsBadge').textContent = '0 FPS';
+  function stopCamera(silent=false){
+    clearInterval(timer); timer=null;
+    stream&&stream.getTracks().forEach(t=>t.stop()); stream=null;
+    ctx.clearRect(0,0,overlay.width,overlay.height);
+    if(!silent){
+      document.getElementById('startBtn').style.display='inline-block';
+      document.getElementById('stopBtn').style.display='none';
+      setStatus('','Idle');
+      document.getElementById('fpsBadge').textContent='0 FPS';
     }
   }
 
-  function camError(e) {
-    setStatus('err', 'Error');
-    document.getElementById('startBtn').style.display = 'inline-block';
-    document.getElementById('stopBtn').style.display  = 'none';
-    alert('Cannot access camera:\n' + e.message);
+  function camErr(e){
+    setStatus('err','Error');
+    document.getElementById('startBtn').style.display='inline-block';
+    document.getElementById('stopBtn').style.display='none';
+    alert('Cannot access camera:\n'+e.message);
   }
 
-  /* ── Detection loop ── */
-  async function detect() {
-    if (busy || !stream) return;
-    busy = true;
-
-    capCtx.drawImage(video, 0, 0, cap.width, cap.height);
-    const img = cap.toDataURL('image/jpeg', 0.8);
-
-    try {
-      const res  = await fetch('/predict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: img })
+  async function detect(){
+    if(busy||!stream) return; busy=true;
+    capCtx.drawImage(video,0,0,cap.width,cap.height);
+    const img=cap.toDataURL('image/jpeg',0.8);
+    try{
+      const res=await fetch('/predict',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({image:img})
       });
-      const data = await res.json();
-
-      frames++;
-      document.getElementById('frameCount').textContent = frames;
+      const data=await res.json();
+      frames++; document.getElementById('frameCount').textContent=frames;
       fpsFrames++;
-      const now = Date.now();
-      if (now - fpsTs >= 1000) {
-        document.getElementById('fpsBadge').textContent = fpsFrames + ' FPS';
-        fpsFrames = 0; fpsTs = now;
+      const now=Date.now();
+      if(now-fpsTs>=1000){
+        document.getElementById('fpsBadge').textContent=fpsFrames+' FPS';
+        fpsFrames=0; fpsTs=now;
       }
-
-      drawBoxes(data.faces || []);
-      updatePanel(data.faces || []);
-    } catch (e) { console.error(e); }
-
-    busy = false;
+      drawBoxes(data.faces||[]);
+      updatePanel(data.faces||[]);
+    }catch(e){console.error(e);}
+    busy=false;
   }
 
-  /* ── Draw face boxes ── */
-  function drawBoxes(faces) {
-    ctx.clearRect(0, 0, overlay.width, overlay.height);
-    faces.forEach(f => {
-      const color = COLORS[f.emotion] || '#fff';
-      const label = `${f.emotion}  ${Math.round(f.confidence * 100)}%`;
-
-      ctx.strokeStyle = color; ctx.lineWidth = 2.5;
-      ctx.strokeRect(f.x, f.y, f.w, f.h);
-
-      ctx.font = 'bold 13px Segoe UI, sans-serif';
-      const tw = ctx.measureText(label).width;
-      ctx.fillStyle = color;
-      ctx.fillRect(f.x, f.y - 24, tw + 14, 22);
-      ctx.fillStyle = '#000';
-      ctx.fillText(label, f.x + 7, f.y - 7);
-
-      // Corner marks
-      const cs = 13;
-      ctx.strokeStyle = color; ctx.lineWidth = 3;
-      [[f.x, f.y, 1, 1],[f.x+f.w, f.y, -1, 1],[f.x, f.y+f.h, 1, -1],[f.x+f.w, f.y+f.h, -1, -1]]
-        .forEach(([cx, cy, dx, dy]) => {
+  function drawBoxes(faces){
+    ctx.clearRect(0,0,overlay.width,overlay.height);
+    faces.forEach(f=>{
+      const color=COLORS[f.emotion]||'#fff';
+      const label=`${f.emotion}  ${Math.round(f.confidence*100)}%`;
+      // Glow box
+      ctx.shadowColor=color; ctx.shadowBlur=12;
+      ctx.strokeStyle=color; ctx.lineWidth=2.5;
+      ctx.strokeRect(f.x,f.y,f.w,f.h);
+      ctx.shadowBlur=0;
+      // Label
+      ctx.font='bold 13px Segoe UI,sans-serif';
+      const tw=ctx.measureText(label).width;
+      ctx.fillStyle=color;
+      ctx.fillRect(f.x,f.y-24,tw+14,22);
+      ctx.fillStyle='#000';
+      ctx.fillText(label,f.x+7,f.y-7);
+      // Corners
+      const cs=13;
+      ctx.shadowColor=color; ctx.shadowBlur=8;
+      ctx.strokeStyle=color; ctx.lineWidth=3;
+      [[f.x,f.y,1,1],[f.x+f.w,f.y,-1,1],[f.x,f.y+f.h,1,-1],[f.x+f.w,f.y+f.h,-1,-1]]
+        .forEach(([cx,cy,dx,dy])=>{
           ctx.beginPath();
-          ctx.moveTo(cx + dx*cs, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + dy*cs);
+          ctx.moveTo(cx+dx*cs,cy); ctx.lineTo(cx,cy); ctx.lineTo(cx,cy+dy*cs);
           ctx.stroke();
         });
+      ctx.shadowBlur=0;
     });
   }
 
-  /* ── Update results panel ── */
-  function updatePanel(faces) {
-    document.getElementById('faceCount').textContent = faces.length;
-
-    if (!faces.length) {
-      document.getElementById('emotionHero').innerHTML = `
+  function updatePanel(faces){
+    document.getElementById('faceCount').textContent=faces.length;
+    if(!faces.length){
+      document.getElementById('emotionHero').innerHTML=`
         <div class="idle-state"><span class="icon">🔍</span><p>No face detected</p></div>`;
-      EMOTIONS.forEach(e => {
-        document.getElementById('bf-' + e).style.width = '0%';
-        document.getElementById('bv-' + e).textContent = '0%';
+      EMOTIONS.forEach(e=>{
+        document.getElementById('bf-'+e).style.width='0%';
+        document.getElementById('bv-'+e).textContent='0%';
       });
       return;
     }
-
-    const f    = faces[0];
-    const conf = Math.round(f.confidence * 100);
-    document.getElementById('emotionHero').innerHTML = `
+    const f=faces[0];
+    const conf=Math.round(f.confidence*100);
+    document.getElementById('emotionHero').innerHTML=`
       <div class="emotion-hero">
         <span class="e-emoji">${EMOJIS[f.emotion]}</span>
         <div class="e-name" style="color:${COLORS[f.emotion]}">${f.emotion}</div>
-        <div class="e-conf">${conf}% confidence${faces.length > 1 ? ' · ' + faces.length + ' faces' : ''}</div>
+        <div class="e-conf">${conf}% confidence${faces.length>1?' · '+faces.length+' faces':''}</div>
       </div>`;
-
-    EMOTIONS.forEach(e => {
-      const pct = (f.scores || {})[e] || 0;
-      document.getElementById('bf-' + e).style.width = pct + '%';
-      document.getElementById('bv-' + e).textContent  = pct.toFixed(0) + '%';
+    EMOTIONS.forEach(e=>{
+      const pct=(f.scores||{})[e]||0;
+      document.getElementById('bf-'+e).style.width=pct+'%';
+      document.getElementById('bv-'+e).textContent=pct.toFixed(0)+'%';
     });
   }
 
-  function setStatus(cls, txt) {
-    document.getElementById('dot').className      = 'dot' + (cls ? ' ' + cls : '');
-    document.getElementById('statusTxt').textContent = txt;
+  function setStatus(cls,txt){
+    document.getElementById('dot').className='dot'+(cls?' '+cls:'');
+    document.getElementById('statusTxt').textContent=txt;
   }
 </script>
 </body>
