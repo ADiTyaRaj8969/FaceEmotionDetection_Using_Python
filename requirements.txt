@@ -1,5 +1,5 @@
 flask>=2.3.0
-tensorflow>=2.13.0
+tensorflow-cpu==2.15.0
 opencv-python-headless>=4.8.0
 numpy>=1.24.0
 gunicorn>=21.2.0
