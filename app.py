@@ -8,15 +8,26 @@ app = Flask(__name__)
 
 EMOTION_LABELS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
 
-# Load model once at startup
+# ── Load model ────────────────────────────────────────────────────────────────
 model = None
-try:
-    from tensorflow.keras.models import load_model
-    model = load_model('emotion.h5')
-    print("Model loaded successfully.")
-except Exception as e:
-    print(f"Warning: Could not load model — {e}")
+model_error = None
 
+for loader in [
+    lambda: __import__('tensorflow.keras.models', fromlist=['load_model']).load_model('emotion.h5', compile=False),
+    lambda: __import__('keras.models', fromlist=['load_model']).load_model('emotion.h5', compile=False),
+    lambda: __import__('tensorflow', fromlist=['keras']).keras.models.load_model('emotion.h5', compile=False),
+]:
+    try:
+        model = loader()
+        print("Model loaded successfully.")
+        break
+    except Exception as e:
+        model_error = str(e)
+
+if model is None:
+    print(f"WARNING: Model failed to load — {model_error}")
+
+# ── Face cascade ──────────────────────────────────────────────────────────────
 face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 )
@@ -27,10 +38,20 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/health')
+def health():
+    """Quick check — visit /health to confirm the model loaded."""
+    return jsonify({
+        'status': 'ok' if model is not None else 'degraded',
+        'model_loaded': model is not None,
+        'model_error': model_error,
+    })
+
+
 @app.route('/predict', methods=['POST'])
 def predict():
     if model is None:
-        return jsonify({'error': 'Model not loaded', 'faces': []})
+        return jsonify({'error': f'Model not loaded: {model_error}', 'faces': []})
 
     data = request.get_json(silent=True)
     if not data or 'image' not in data:
@@ -49,8 +70,17 @@ def predict():
             return jsonify({'error': 'Could not decode image', 'faces': []})
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # Equalise histogram — improves detection under poor / uneven lighting
+        gray = cv2.equalizeHist(gray)
+
+        # Looser parameters catch more faces (especially through JPEG compression)
         faces = face_cascade.detectMultiScale(
-            gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
+            gray,
+            scaleFactor=1.1,
+            minNeighbors=3,
+            minSize=(20, 20),
+            flags=cv2.CASCADE_SCALE_IMAGE
         )
 
         results = []

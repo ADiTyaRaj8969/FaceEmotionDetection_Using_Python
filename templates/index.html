@@ -441,6 +441,13 @@
         document.getElementById('fpsBadge').textContent=fpsFrames+' FPS';
         fpsFrames=0; fpsTs=now;
       }
+      if(data.error && !data.faces.length){
+        document.getElementById('emotionHero').innerHTML=`
+          <div class="idle-state" style="color:#ff4d4d">
+            <span class="icon">⚠️</span>
+            <p style="font-size:.75rem;word-break:break-word">${data.error}</p>
+          </div>`;
+      }
       drawBoxes(data.faces||[]);
       updatePanel(data.faces||[]);
     }catch(e){console.error(e);}
