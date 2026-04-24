@@ -8,51 +8,46 @@ app = Flask(__name__)
 
 EMOTION_LABELS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
 
-# ── Load emotion model ────────────────────────────────────────────────────────
-model = None
+# ── Load TF Lite emotion model (~1.4 MB, no full TensorFlow needed) ───────────
+_interp   = None
+_inp_idx  = None
+_out_idx  = None
 model_error = None
 
-
-def _rebuild_and_load(path):
-    import tensorflow as tf
-    m = tf.keras.Sequential([
-        tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(48, 48, 1)),
-        tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
-        tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
-        tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Flatten(),
-        tf.keras.layers.Dropout(0.5),
-        tf.keras.layers.Dense(128, activation='relu'),
-        tf.keras.layers.Dense(7, activation='softmax'),
-    ])
-    m.load_weights(path)
-    return m
-
-
-for _loader in [
-    lambda: __import__('tensorflow.keras.models', fromlist=['load_model'])
-                .load_model('emotion.h5', compile=False),
-    lambda: _rebuild_and_load('emotion.h5'),
-]:
+try:
+    import tflite_runtime.interpreter as tflite
+    _interp = tflite.Interpreter(model_path='emotion.tflite')
+except Exception:
     try:
-        model = _loader()
-        print("Emotion model loaded OK.")
-        break
+        # Fallback: TF Lite bundled inside tensorflow package
+        import tensorflow as tf
+        _interp = tf.lite.Interpreter(model_path='emotion.tflite')
     except Exception as e:
         model_error = str(e)
 
-if model is None:
-    print(f"WARNING: emotion model failed — {model_error}")
+if _interp is not None:
+    _interp.allocate_tensors()
+    _inp_idx = _interp.get_input_details()[0]['index']
+    _out_idx = _interp.get_output_details()[0]['index']
+    print("TF Lite emotion model loaded.")
+else:
+    print(f"WARNING: TF Lite model failed — {model_error}")
 
-# Warm up TF graph immediately (synchronous, before first request)
-if model is not None:
-    try:
-        model.predict(np.zeros((1, 48, 48, 1), dtype=np.float32), verbose=0)
-        print("Emotion model warmed up.")
-    except Exception as e:
-        print(f"Warmup failed (non-fatal): {e}")
+
+def predict_emotion(gray_roi):
+    """Run emotion inference. Returns (label, confidence, scores_dict)."""
+    roi = cv2.resize(gray_roi, (48, 48)).astype('float32') / 255.0
+    roi = np.reshape(roi, (1, 48, 48, 1))
+    _interp.set_tensor(_inp_idx, roi)
+    _interp.invoke()
+    preds = _interp.get_tensor(_out_idx)[0]
+    idx   = int(np.argmax(preds))
+    return (
+        EMOTION_LABELS[idx],
+        float(preds[idx]),
+        {EMOTION_LABELS[i]: round(float(preds[i]) * 100, 1) for i in range(7)}
+    )
+
 
 # ── Face detection: YuNet → Haar fallback ────────────────────────────────────
 _yunet    = None
@@ -62,7 +57,7 @@ _YUNET_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_det
 
 if os.path.exists(_YUNET_PATH) and hasattr(cv2, 'FaceDetectorYN'):
     try:
-        _yunet    = cv2.FaceDetectorYN.create(
+        _yunet = cv2.FaceDetectorYN.create(
             _YUNET_PATH, '', (320, 320),
             score_threshold=0.5,
             nms_threshold=0.3,
@@ -73,7 +68,7 @@ if os.path.exists(_YUNET_PATH) and hasattr(cv2, 'FaceDetectorYN'):
     except Exception as e:
         print(f"YuNet init failed ({e}), using Haar.")
 else:
-    print("YuNet unavailable (no model file or old OpenCV), using Haar.")
+    print("YuNet unavailable, using Haar cascade.")
 
 _haar = cv2.CascadeClassifier(
     cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
@@ -105,7 +100,7 @@ def _nms(boxes, iou_thresh=0.35):
 
 def detect_faces(frame):
     fh, fw = frame.shape[:2]
-    min_px = max(40, int(fw * 0.05))
+    min_px  = max(40, int(fw * 0.05))
 
     if USE_YUNET and _yunet is not None:
         try:
@@ -115,13 +110,13 @@ def detect_faces(frame):
             if det is not None:
                 for d in det:
                     x, y, bw, bh = int(d[0]), int(d[1]), int(d[2]), int(d[3])
-                    x  = max(0, x);  y  = max(0, y)
-                    bw = min(bw, fw - x); bh = min(bh, fh - y)
+                    x  = max(0, x);   y  = max(0, y)
+                    bw = min(bw, fw-x); bh = min(bh, fh-y)
                     if bw >= min_px and bh >= min_px:
                         boxes.append((x, y, bw, bh))
             return _nms(boxes)
         except Exception as e:
-            print(f"YuNet detect error: {e}")
+            print(f"YuNet error: {e}")
 
     # Haar fallback
     gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -140,8 +135,8 @@ def index():
 @app.route('/health')
 def health():
     return jsonify({
-        'status':        'ok' if model is not None else 'degraded',
-        'model_loaded':  model is not None,
+        'status':        'ok' if _interp is not None else 'degraded',
+        'model_loaded':  _interp is not None,
         'model_error':   model_error,
         'face_detector': 'yunet' if USE_YUNET else 'haar',
         'yunet_file':    os.path.exists(_YUNET_PATH),
@@ -150,7 +145,7 @@ def health():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    if model is None:
+    if _interp is None:
         return jsonify({'error': f'Model not loaded: {model_error}', 'faces': []})
 
     data = request.get_json(silent=True)
@@ -174,22 +169,12 @@ def predict():
         results = []
 
         for (x, y, w, h) in faces:
-            roi = gray[y:y+h, x:x+w]
-            roi = cv2.resize(roi, (48, 48))
-            roi = roi.astype('float32') / 255.0
-            roi = np.reshape(roi, (1, 48, 48, 1))
-
-            preds = model.predict(roi, verbose=0)[0]
-            idx   = int(np.argmax(preds))
-
+            emotion, confidence, scores = predict_emotion(gray[y:y+h, x:x+w])
             results.append({
                 'x': int(x), 'y': int(y), 'w': int(w), 'h': int(h),
-                'emotion':    EMOTION_LABELS[idx],
-                'confidence': float(preds[idx]),
-                'scores': {
-                    EMOTION_LABELS[i]: round(float(preds[i]) * 100, 1)
-                    for i in range(len(EMOTION_LABELS))
-                }
+                'emotion':    emotion,
+                'confidence': confidence,
+                'scores':     scores,
             })
 
         return jsonify({'faces': results})
