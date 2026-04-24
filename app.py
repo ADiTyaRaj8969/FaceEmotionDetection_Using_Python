@@ -1,4 +1,5 @@
 import os
+import threading
 import base64
 import numpy as np
 import cv2
@@ -46,41 +47,31 @@ for _loader in [
 if model is None:
     print(f"WARNING: Emotion model failed to load — {model_error}")
 
-# ── Face detection: MTCNN → Haar fallback ────────────────────────────────────
-_mtcnn    = None
-USE_MTCNN = False
+# ── Face detection: YuNet (OpenCV DNN) → Haar fallback ───────────────────────
+_yunet    = None
+USE_YUNET = False
 
-try:
-    from mtcnn import MTCNN
-    _mtcnn    = MTCNN()
-    USE_MTCNN = True
-    print("MTCNN face detection ready.")
-except Exception as e:
-    print(f"MTCNN unavailable ({e}), falling back to Haar cascade.")
+_YUNET_PATH = os.path.join(os.path.dirname(__file__), 'face_detection_yunet.onnx')
+if os.path.exists(_YUNET_PATH):
+    try:
+        _yunet    = cv2.FaceDetectorYN.create(_YUNET_PATH, '', (320, 320), 0.6, 0.3, 5000)
+        USE_YUNET = True
+        print("YuNet face detection ready.")
+    except Exception as e:
+        print(f"YuNet init failed ({e}), falling back to Haar.")
+else:
+    print("YuNet model file not found, falling back to Haar.")
 
 _haar = cv2.CascadeClassifier(
     cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 )
-
-# ── Warm-up: compile TF graphs at startup, not on the first request ───────────
-try:
-    _dummy_frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    if USE_MTCNN and _mtcnn is not None:
-        _mtcnn.detect_faces(_dummy_frame)
-        print("MTCNN warmed up.")
-    if model is not None:
-        _dummy_roi = np.zeros((1, 48, 48, 1), dtype=np.float32)
-        model.predict(_dummy_roi, verbose=0)
-        print("Emotion model warmed up.")
-except Exception as e:
-    print(f"Warmup error (non-fatal): {e}")
 
 
 def _nms(boxes, iou_thresh=0.35):
     if len(boxes) <= 1:
         return boxes
     boxes = sorted(boxes, key=lambda b: b[2] * b[3], reverse=True)
-    kept = []
+    kept  = []
     for box in boxes:
         x1, y1, w1, h1 = box
         dup = False
@@ -89,9 +80,9 @@ def _nms(boxes, iou_thresh=0.35):
             ix2 = min(x1+w1, kx+kw); iy2 = min(y1+h1, ky+kh)
             if ix2 <= ix or iy2 <= iy:
                 continue
-            inter = (ix2 - ix) * (iy2 - iy)
+            inter = (ix2-ix)*(iy2-iy)
             union = w1*h1 + kw*kh - inter
-            if inter / union > iou_thresh:
+            if inter/union > iou_thresh:
                 dup = True
                 break
         if not dup:
@@ -103,18 +94,18 @@ def detect_faces(frame):
     h, w   = frame.shape[:2]
     min_px = max(40, int(w * 0.05))
 
-    if USE_MTCNN and _mtcnn is not None:
-        rgb     = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = _mtcnn.detect_faces(rgb)
-        boxes   = []
-        for r in results:
-            if r['confidence'] < 0.85:
-                continue
-            x, y, bw, bh = r['box']
-            x  = max(0, x);   y  = max(0, y)
-            bw = min(bw, w - x); bh = min(bh, h - y)
-            if bw >= min_px and bh >= min_px:
-                boxes.append((x, y, bw, bh))
+    if USE_YUNET and _yunet is not None:
+        # YuNet needs the input size set to match the frame
+        _yunet.setInputSize((w, h))
+        _, det = _yunet.detect(frame)
+        boxes  = []
+        if det is not None:
+            for d in det:
+                x, y, bw, bh = int(d[0]), int(d[1]), int(d[2]), int(d[3])
+                x  = max(0, x);  y  = max(0, y)
+                bw = min(bw, w-x); bh = min(bh, h-y)
+                if bw >= min_px and bh >= min_px:
+                    boxes.append((x, y, bw, bh))
         return _nms(boxes)
 
     # Haar fallback
@@ -123,6 +114,18 @@ def detect_faces(frame):
         gray, scaleFactor=1.05, minNeighbors=3, minSize=(40, 40)
     )
     return _nms(list(found) if len(found) else [])
+
+
+# ── Warm up emotion model in background (non-blocking) ───────────────────────
+def _warmup():
+    try:
+        if model is not None:
+            model.predict(np.zeros((1, 48, 48, 1), dtype=np.float32), verbose=0)
+            print("Emotion model warmed up.")
+    except Exception as e:
+        print(f"Warmup error (non-fatal): {e}")
+
+threading.Thread(target=_warmup, daemon=True).start()
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -137,7 +140,7 @@ def health():
         'status':        'ok' if model is not None else 'degraded',
         'model_loaded':  model is not None,
         'model_error':   model_error,
-        'face_detector': 'mtcnn' if USE_MTCNN else 'haar',
+        'face_detector': 'yunet' if USE_YUNET else 'haar',
     })
 
 
@@ -167,7 +170,7 @@ def predict():
         results = []
 
         for (x, y, w, h) in faces:
-            roi = gray[y:y + h, x:x + w]
+            roi = gray[y:y+h, x:x+w]
             roi = cv2.resize(roi, (48, 48))
             roi = roi.astype('float32') / 255.0
             roi = np.reshape(roi, (1, 48, 48, 1))

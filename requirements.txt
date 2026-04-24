@@ -3,4 +3,4 @@ tensorflow-cpu==2.13.0
 opencv-python-headless>=4.8.0
 numpy>=1.24.0
 gunicorn>=21.2.0
-mtcnn>=0.1.1
+# mtcnn removed — too heavy for 512 MB free tier (hits memory limit)
