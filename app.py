@@ -14,8 +14,6 @@ model_error = None
 
 
 def _rebuild_and_load(path):
-    """Rebuild the CNN architecture from scratch and load weights only.
-    Bypasses Keras config deserialization — works across all Keras versions."""
     import tensorflow as tf
     m = tf.keras.Sequential([
         tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(48, 48, 1)),
@@ -33,14 +31,13 @@ def _rebuild_and_load(path):
     return m
 
 
-for loader in [
+for _loader in [
     lambda: __import__('tensorflow.keras.models', fromlist=['load_model']).load_model('emotion.h5', compile=False),
-    lambda: __import__('keras.models',             fromlist=['load_model']).load_model('emotion.h5', compile=False),
-    lambda: __import__('tensorflow', fromlist=['keras']).keras.models.load_model('emotion.h5', compile=False),
+    lambda: __import__('keras.models', fromlist=['load_model']).load_model('emotion.h5', compile=False),
     lambda: _rebuild_and_load('emotion.h5'),
 ]:
     try:
-        model = loader()
+        model = _loader()
         print("Emotion model loaded successfully.")
         break
     except Exception as e:
@@ -49,69 +46,62 @@ for loader in [
 if model is None:
     print(f"WARNING: Emotion model failed to load — {model_error}")
 
-# ── Face detection: MediaPipe (preferred) → Haar fallback ────────────────────
-USE_MEDIAPIPE = False
-_mp_detector  = None
+# ── Face detection: MTCNN → Haar fallback ────────────────────────────────────
+_mtcnn    = None
+USE_MTCNN = False
 
 try:
-    import mediapipe as mp
-    _mp_detector  = mp.solutions.face_detection.FaceDetection(
-        model_selection=0,          # 0 = short-range (≤2 m), best for webcam
-        min_detection_confidence=0.6
-    )
-    USE_MEDIAPIPE = True
-    print("MediaPipe face detection ready.")
+    from mtcnn import MTCNN
+    _mtcnn    = MTCNN()
+    USE_MTCNN = True
+    print("MTCNN face detection ready.")
 except Exception as e:
-    print(f"MediaPipe unavailable ({e}), falling back to Haar cascade.")
+    print(f"MTCNN unavailable ({e}), falling back to Haar cascade.")
 
-# Haar fallback (used only if MediaPipe is not available)
 _haar = cv2.CascadeClassifier(
     cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 )
 
 
 def _nms(boxes, iou_thresh=0.35):
-    """Remove overlapping detections, keep the largest per cluster."""
     if len(boxes) <= 1:
         return boxes
     boxes = sorted(boxes, key=lambda b: b[2] * b[3], reverse=True)
     kept = []
     for box in boxes:
         x1, y1, w1, h1 = box
-        duplicate = False
+        dup = False
         for kx, ky, kw, kh in kept:
-            ix = max(x1, kx);  iy  = max(y1, ky)
+            ix  = max(x1, kx);       iy  = max(y1, ky)
             ix2 = min(x1+w1, kx+kw); iy2 = min(y1+h1, ky+kh)
             if ix2 <= ix or iy2 <= iy:
                 continue
             inter = (ix2 - ix) * (iy2 - iy)
             union = w1*h1 + kw*kh - inter
             if inter / union > iou_thresh:
-                duplicate = True
+                dup = True
                 break
-        if not duplicate:
+        if not dup:
             kept.append(box)
     return kept
 
 
 def detect_faces(frame):
-    """Return list of (x, y, w, h) tuples for every detected face."""
-    h, w = frame.shape[:2]
-    min_px = max(40, int(w * 0.05))   # face must be ≥5% of frame width
+    h, w   = frame.shape[:2]
+    min_px = max(40, int(w * 0.05))
 
-    if USE_MEDIAPIPE and _mp_detector is not None:
+    if USE_MTCNN and _mtcnn is not None:
         rgb     = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = _mp_detector.process(rgb)
+        results = _mtcnn.detect_faces(rgb)
         boxes   = []
-        if results.detections:
-            for det in results.detections:
-                bb = det.location_data.relative_bounding_box
-                x  = max(0, int(bb.xmin * w))
-                y  = max(0, int(bb.ymin * h))
-                bw = min(int(bb.width  * w), w - x)
-                bh = min(int(bb.height * h), h - y)
-                if bw >= min_px and bh >= min_px:
-                    boxes.append((x, y, bw, bh))
+        for r in results:
+            if r['confidence'] < 0.85:
+                continue
+            x, y, bw, bh = r['box']
+            x  = max(0, x);   y  = max(0, y)
+            bw = min(bw, w - x); bh = min(bh, h - y)
+            if bw >= min_px and bh >= min_px:
+                boxes.append((x, y, bw, bh))
         return _nms(boxes)
 
     # Haar fallback
@@ -131,10 +121,10 @@ def index():
 @app.route('/health')
 def health():
     return jsonify({
-        'status':       'ok' if model is not None else 'degraded',
-        'model_loaded': model is not None,
-        'model_error':  model_error,
-        'face_detector': 'mediapipe' if USE_MEDIAPIPE else 'haar',
+        'status':        'ok' if model is not None else 'degraded',
+        'model_loaded':  model is not None,
+        'model_error':   model_error,
+        'face_detector': 'mtcnn' if USE_MTCNN else 'haar',
     })
 
 
