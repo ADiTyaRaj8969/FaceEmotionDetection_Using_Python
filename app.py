@@ -12,10 +12,32 @@ EMOTION_LABELS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutr
 model = None
 model_error = None
 
+
+def _rebuild_and_load(path):
+    """Rebuild the CNN architecture from scratch and load weights only.
+    Bypasses Keras config deserialization — works across all Keras versions."""
+    import tensorflow as tf
+    m = tf.keras.Sequential([
+        tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(48, 48, 1)),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dense(128, activation='relu'),
+        tf.keras.layers.Dense(7, activation='softmax'),
+    ])
+    m.load_weights(path)
+    return m
+
+
 for loader in [
     lambda: __import__('tensorflow.keras.models', fromlist=['load_model']).load_model('emotion.h5', compile=False),
     lambda: __import__('keras.models',             fromlist=['load_model']).load_model('emotion.h5', compile=False),
     lambda: __import__('tensorflow', fromlist=['keras']).keras.models.load_model('emotion.h5', compile=False),
+    lambda: _rebuild_and_load('emotion.h5'),
 ]:
     try:
         model = loader()
