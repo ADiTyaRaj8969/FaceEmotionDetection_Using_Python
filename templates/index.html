@@ -445,7 +445,7 @@
     try{
       // 30 s abort so a slow cold-start doesn't silently hang forever
       const ctrl    = new AbortController();
-      const tId     = setTimeout(()=>ctrl.abort(), 30000);
+      const tId     = setTimeout(()=>ctrl.abort(), 60000);
 
       const res  = await fetch('/predict',{
         method:'POST',

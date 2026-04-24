@@ -62,6 +62,19 @@ _haar = cv2.CascadeClassifier(
     cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 )
 
+# ── Warm-up: compile TF graphs at startup, not on the first request ───────────
+try:
+    _dummy_frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    if USE_MTCNN and _mtcnn is not None:
+        _mtcnn.detect_faces(_dummy_frame)
+        print("MTCNN warmed up.")
+    if model is not None:
+        _dummy_roi = np.zeros((1, 48, 48, 1), dtype=np.float32)
+        model.predict(_dummy_roi, verbose=0)
+        print("Emotion model warmed up.")
+except Exception as e:
+    print(f"Warmup error (non-fatal): {e}")
+
 
 def _nms(boxes, iou_thresh=0.35):
     if len(boxes) <= 1:
