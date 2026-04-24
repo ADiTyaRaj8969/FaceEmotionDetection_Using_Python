@@ -1,5 +1,4 @@
 import os
-import threading
 import base64
 import numpy as np
 import cv2
@@ -33,34 +32,48 @@ def _rebuild_and_load(path):
 
 
 for _loader in [
-    lambda: __import__('tensorflow.keras.models', fromlist=['load_model']).load_model('emotion.h5', compile=False),
-    lambda: __import__('keras.models', fromlist=['load_model']).load_model('emotion.h5', compile=False),
+    lambda: __import__('tensorflow.keras.models', fromlist=['load_model'])
+                .load_model('emotion.h5', compile=False),
     lambda: _rebuild_and_load('emotion.h5'),
 ]:
     try:
         model = _loader()
-        print("Emotion model loaded successfully.")
+        print("Emotion model loaded OK.")
         break
     except Exception as e:
         model_error = str(e)
 
 if model is None:
-    print(f"WARNING: Emotion model failed to load — {model_error}")
+    print(f"WARNING: emotion model failed — {model_error}")
 
-# ── Face detection: YuNet (OpenCV DNN) → Haar fallback ───────────────────────
+# Warm up TF graph immediately (synchronous, before first request)
+if model is not None:
+    try:
+        model.predict(np.zeros((1, 48, 48, 1), dtype=np.float32), verbose=0)
+        print("Emotion model warmed up.")
+    except Exception as e:
+        print(f"Warmup failed (non-fatal): {e}")
+
+# ── Face detection: YuNet → Haar fallback ────────────────────────────────────
 _yunet    = None
 USE_YUNET = False
 
-_YUNET_PATH = os.path.join(os.path.dirname(__file__), 'face_detection_yunet.onnx')
-if os.path.exists(_YUNET_PATH):
+_YUNET_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_detection_yunet.onnx')
+
+if os.path.exists(_YUNET_PATH) and hasattr(cv2, 'FaceDetectorYN'):
     try:
-        _yunet    = cv2.FaceDetectorYN.create(_YUNET_PATH, '', (320, 320), 0.6, 0.3, 5000)
+        _yunet    = cv2.FaceDetectorYN.create(
+            _YUNET_PATH, '', (320, 320),
+            score_threshold=0.5,
+            nms_threshold=0.3,
+            top_k=5000
+        )
         USE_YUNET = True
         print("YuNet face detection ready.")
     except Exception as e:
-        print(f"YuNet init failed ({e}), falling back to Haar.")
+        print(f"YuNet init failed ({e}), using Haar.")
 else:
-    print("YuNet model file not found, falling back to Haar.")
+    print("YuNet unavailable (no model file or old OpenCV), using Haar.")
 
 _haar = cv2.CascadeClassifier(
     cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
@@ -80,7 +93,7 @@ def _nms(boxes, iou_thresh=0.35):
             ix2 = min(x1+w1, kx+kw); iy2 = min(y1+h1, ky+kh)
             if ix2 <= ix or iy2 <= iy:
                 continue
-            inter = (ix2-ix)*(iy2-iy)
+            inter = (ix2-ix) * (iy2-iy)
             union = w1*h1 + kw*kh - inter
             if inter/union > iou_thresh:
                 dup = True
@@ -91,41 +104,31 @@ def _nms(boxes, iou_thresh=0.35):
 
 
 def detect_faces(frame):
-    h, w   = frame.shape[:2]
-    min_px = max(40, int(w * 0.05))
+    fh, fw = frame.shape[:2]
+    min_px = max(40, int(fw * 0.05))
 
     if USE_YUNET and _yunet is not None:
-        # YuNet needs the input size set to match the frame
-        _yunet.setInputSize((w, h))
-        _, det = _yunet.detect(frame)
-        boxes  = []
-        if det is not None:
-            for d in det:
-                x, y, bw, bh = int(d[0]), int(d[1]), int(d[2]), int(d[3])
-                x  = max(0, x);  y  = max(0, y)
-                bw = min(bw, w-x); bh = min(bh, h-y)
-                if bw >= min_px and bh >= min_px:
-                    boxes.append((x, y, bw, bh))
-        return _nms(boxes)
+        try:
+            _yunet.setInputSize((fw, fh))
+            _, det = _yunet.detect(frame)
+            boxes  = []
+            if det is not None:
+                for d in det:
+                    x, y, bw, bh = int(d[0]), int(d[1]), int(d[2]), int(d[3])
+                    x  = max(0, x);  y  = max(0, y)
+                    bw = min(bw, fw - x); bh = min(bh, fh - y)
+                    if bw >= min_px and bh >= min_px:
+                        boxes.append((x, y, bw, bh))
+            return _nms(boxes)
+        except Exception as e:
+            print(f"YuNet detect error: {e}")
 
     # Haar fallback
     gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     found = _haar.detectMultiScale(
-        gray, scaleFactor=1.05, minNeighbors=3, minSize=(40, 40)
+        gray, scaleFactor=1.05, minNeighbors=2, minSize=(30, 30)
     )
     return _nms(list(found) if len(found) else [])
-
-
-# ── Warm up emotion model in background (non-blocking) ───────────────────────
-def _warmup():
-    try:
-        if model is not None:
-            model.predict(np.zeros((1, 48, 48, 1), dtype=np.float32), verbose=0)
-            print("Emotion model warmed up.")
-    except Exception as e:
-        print(f"Warmup error (non-fatal): {e}")
-
-threading.Thread(target=_warmup, daemon=True).start()
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -141,6 +144,7 @@ def health():
         'model_loaded':  model is not None,
         'model_error':   model_error,
         'face_detector': 'yunet' if USE_YUNET else 'haar',
+        'yunet_file':    os.path.exists(_YUNET_PATH),
     })
 
 
