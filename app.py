@@ -35,7 +35,7 @@ try:
     import mediapipe as mp
     _mp_detector  = mp.solutions.face_detection.FaceDetection(
         model_selection=0,          # 0 = short-range (≤2 m), best for webcam
-        min_detection_confidence=0.3
+        min_detection_confidence=0.6
     )
     USE_MEDIAPIPE = True
     print("MediaPipe face detection ready.")
@@ -48,9 +48,34 @@ _haar = cv2.CascadeClassifier(
 )
 
 
+def _nms(boxes, iou_thresh=0.35):
+    """Remove overlapping detections, keep the largest per cluster."""
+    if len(boxes) <= 1:
+        return boxes
+    boxes = sorted(boxes, key=lambda b: b[2] * b[3], reverse=True)
+    kept = []
+    for box in boxes:
+        x1, y1, w1, h1 = box
+        duplicate = False
+        for kx, ky, kw, kh in kept:
+            ix = max(x1, kx);  iy  = max(y1, ky)
+            ix2 = min(x1+w1, kx+kw); iy2 = min(y1+h1, ky+kh)
+            if ix2 <= ix or iy2 <= iy:
+                continue
+            inter = (ix2 - ix) * (iy2 - iy)
+            union = w1*h1 + kw*kh - inter
+            if inter / union > iou_thresh:
+                duplicate = True
+                break
+        if not duplicate:
+            kept.append(box)
+    return kept
+
+
 def detect_faces(frame):
     """Return list of (x, y, w, h) tuples for every detected face."""
     h, w = frame.shape[:2]
+    min_px = max(40, int(w * 0.05))   # face must be ≥5% of frame width
 
     if USE_MEDIAPIPE and _mp_detector is not None:
         rgb     = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -63,16 +88,16 @@ def detect_faces(frame):
                 y  = max(0, int(bb.ymin * h))
                 bw = min(int(bb.width  * w), w - x)
                 bh = min(int(bb.height * h), h - y)
-                if bw > 20 and bh > 20:
+                if bw >= min_px and bh >= min_px:
                     boxes.append((x, y, bw, bh))
-        return boxes
+        return _nms(boxes)
 
     # Haar fallback
     gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     found = _haar.detectMultiScale(
-        gray, scaleFactor=1.05, minNeighbors=2, minSize=(20, 20)
+        gray, scaleFactor=1.05, minNeighbors=3, minSize=(40, 40)
     )
-    return list(found) if len(found) else []
+    return _nms(list(found) if len(found) else [])
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
