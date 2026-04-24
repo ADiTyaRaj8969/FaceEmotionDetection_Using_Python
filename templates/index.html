@@ -398,11 +398,19 @@
     setStatus('on','Running');
     const sid=stream.getVideoTracks()[0].getSettings().deviceId;
     if(sid) document.getElementById('camSelect').value=sid;
-    video.onloadedmetadata=()=>{
-      overlay.width=cap.width=video.videoWidth;
-      overlay.height=cap.height=video.videoHeight;
-      timer=setInterval(detect,500);
+    // Show "warming up" immediately so the user knows detection has started
+    document.getElementById('emotionHero').innerHTML=`
+      <div class="idle-state">
+        <span class="icon">⏳</span><p>Warming up model...</p>
+      </div>`;
+
+    const _startDetection = () => {
+      overlay.width=cap.width=video.videoWidth||640;
+      overlay.height=cap.height=video.videoHeight||480;
+      timer=setInterval(detect,600);
     };
+    if(video.readyState>=1){ _startDetection(); }
+    else { video.onloadedmetadata=_startDetection; }
   }
 
   function stopCamera(silent=false){
@@ -426,31 +434,56 @@
 
   async function detect(){
     if(busy||!stream) return; busy=true;
+
+    // Count the attempt immediately — shows the loop is running regardless of outcome
+    frames++;
+    document.getElementById('frameCount').textContent=frames;
+
     capCtx.drawImage(video,0,0,cap.width,cap.height);
-    const img=cap.toDataURL('image/jpeg',0.8);
+    const img=cap.toDataURL('image/jpeg',0.7);   // slightly lower quality = faster upload
+
     try{
-      const res=await fetch('/predict',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({image:img})
+      // 30 s abort so a slow cold-start doesn't silently hang forever
+      const ctrl    = new AbortController();
+      const tId     = setTimeout(()=>ctrl.abort(), 30000);
+
+      const res  = await fetch('/predict',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({image:img}),
+        signal: ctrl.signal
       });
-      const data=await res.json();
-      frames++; document.getElementById('frameCount').textContent=frames;
+      clearTimeout(tId);
+
+      const data = await res.json();
+
       fpsFrames++;
       const now=Date.now();
       if(now-fpsTs>=1000){
         document.getElementById('fpsBadge').textContent=fpsFrames+' FPS';
         fpsFrames=0; fpsTs=now;
       }
-      if(data.error && !data.faces.length){
+
+      if(data.error && !(data.faces||[]).length){
         document.getElementById('emotionHero').innerHTML=`
           <div class="idle-state" style="color:#ff4d4d">
             <span class="icon">⚠️</span>
             <p style="font-size:.75rem;word-break:break-word">${data.error}</p>
           </div>`;
+      } else {
+        drawBoxes(data.faces||[]);
+        updatePanel(data.faces||[]);
       }
-      drawBoxes(data.faces||[]);
-      updatePanel(data.faces||[]);
-    }catch(e){console.error(e);}
+    } catch(e){
+      if(e.name==='AbortError'){
+        document.getElementById('emotionHero').innerHTML=`
+          <div class="idle-state" style="color:#eab308">
+            <span class="icon">⏱️</span>
+            <p>Server warming up — retrying...</p>
+          </div>`;
+      }
+      console.error('detect error:',e);
+    }
     busy=false;
   }
 
