@@ -27,13 +27,13 @@ if not os.path.exists(_MODEL_PATH):
     log.error(model_error)
 else:
     for _loader in [
-        lambda: __import__('tflite_runtime.interpreter', fromlist=['Interpreter']).Interpreter,
         lambda: __import__('ai_edge_litert.interpreter', fromlist=['Interpreter']).Interpreter,
+        lambda: __import__('tflite_runtime.interpreter', fromlist=['Interpreter']).Interpreter,
         lambda: __import__('tensorflow', fromlist=['lite']).lite.Interpreter,
     ]:
         try:
             Interpreter = _loader()
-            _interp = Interpreter(model_path=_MODEL_PATH, num_threads=2)
+            _interp = Interpreter(model_path=_MODEL_PATH)
             _interp.allocate_tensors()
             _inp_idx = _interp.get_input_details()[0]['index']
             _out_idx = _interp.get_output_details()[0]['index']
