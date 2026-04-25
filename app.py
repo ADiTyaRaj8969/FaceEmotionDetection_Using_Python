@@ -170,13 +170,16 @@ def predict():
         if frame is None:
             return jsonify({'error': 'Could not decode image', 'faces': []})
 
-        # Cap at 640px wide for speed
-        fh, fw = frame.shape[:2]
-        if fw > 640:
-            scale = 640 / fw
-            frame = cv2.resize(frame, (640, int(fh * scale)))
-            fh, fw = frame.shape[:2]
+        orig_h, orig_w = frame.shape[:2]
+        scale_back = 1.0
 
+        # Resize for faster server-side detection, but track scale so we can
+        # map coordinates back to the original canvas size the browser uses.
+        if orig_w > 640:
+            scale_back = orig_w / 640
+            frame = cv2.resize(frame, (640, int(orig_h / scale_back)))
+
+        fh, fw = frame.shape[:2]
         faces   = detect_faces(frame)
         gray    = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         results = []
@@ -184,8 +187,10 @@ def predict():
         for (x, y, w, h) in faces:
             px, py, pw, ph = _pad_box(x, y, w, h, fw, fh)
             emotion, confidence, scores = predict_emotion(gray[py:py+ph, px:px+pw])
+            # Scale coords back to original frame dimensions for the browser canvas
             results.append({
-                'x': int(x), 'y': int(y), 'w': int(w), 'h': int(h),
+                'x': int(x * scale_back), 'y': int(y * scale_back),
+                'w': int(w * scale_back), 'h': int(h * scale_back),
                 'emotion':    emotion,
                 'confidence': round(confidence, 4),
                 'scores':     scores,
