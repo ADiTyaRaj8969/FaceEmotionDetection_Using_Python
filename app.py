@@ -3,6 +3,7 @@ import base64
 import logging
 import numpy as np
 import cv2
+import onnxruntime as ort
 from flask import Flask, render_template, request, jsonify
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -12,46 +13,34 @@ app = Flask(__name__)
 
 EMOTION_LABELS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
 
-_BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
-_MODEL_PATH = os.path.join(_BASE_DIR, 'emotion.tflite')
-_YUNET_PATH = os.path.join(_BASE_DIR, 'face_detection_yunet.onnx')
+_BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
+_MODEL_PATH  = os.path.join(_BASE_DIR, 'emotion.onnx')
+_YUNET_PATH  = os.path.join(_BASE_DIR, 'face_detection_yunet.onnx')
 
-# ── Load TF Lite emotion model ────────────────────────────────────────────────
-_interp     = None
-_inp_idx    = None
-_out_idx    = None
+# ── Load ONNX emotion model (~1.4 MB, fast CPU inference via onnxruntime) ─────
+_session    = None
+_inp_name   = None
+_out_name   = None
 model_error = None
 
 if not os.path.exists(_MODEL_PATH):
-    model_error = f'emotion.tflite not found at {_MODEL_PATH}'
+    model_error = f'emotion.onnx not found at {_MODEL_PATH}'
     log.error(model_error)
 else:
-    for _loader in [
-        lambda: __import__('ai_edge_litert.interpreter', fromlist=['Interpreter']).Interpreter,
-        lambda: __import__('tflite_runtime.interpreter', fromlist=['Interpreter']).Interpreter,
-        lambda: __import__('tensorflow', fromlist=['lite']).lite.Interpreter,
-    ]:
-        try:
-            Interpreter = _loader()
-            _interp = Interpreter(model_path=_MODEL_PATH)
-            _interp.allocate_tensors()
-            _inp_idx = _interp.get_input_details()[0]['index']
-            _out_idx = _interp.get_output_details()[0]['index']
-            log.info('TF Lite emotion model loaded OK')
-            break
-        except Exception as _e:
-            log.warning('TFLite loader attempt failed: %s', _e)
-    if _interp is None:
-        model_error = 'All TFLite loading methods failed'
-        log.error(model_error)
+    try:
+        _session  = ort.InferenceSession(_MODEL_PATH, providers=['CPUExecutionProvider'])
+        _inp_name = _session.get_inputs()[0].name
+        _out_name = _session.get_outputs()[0].name
+        log.info('ONNX emotion model loaded OK  input=%s  output=%s', _inp_name, _out_name)
+    except Exception as e:
+        model_error = str(e)
+        log.error('ONNX model load failed: %s', e)
 
 
 def predict_emotion(gray_roi):
     roi = cv2.resize(gray_roi, (48, 48)).astype('float32') / 255.0
-    roi = np.reshape(roi, (1, 48, 48, 1))
-    _interp.set_tensor(_inp_idx, roi)
-    _interp.invoke()
-    preds = _interp.get_tensor(_out_idx)[0]
+    roi = roi.reshape(1, 48, 48, 1)
+    preds = _session.run([_out_name], {_inp_name: roi})[0][0]
     idx   = int(np.argmax(preds))
     return (
         EMOTION_LABELS[idx],
@@ -68,7 +57,7 @@ if os.path.exists(_YUNET_PATH) and hasattr(cv2, 'FaceDetectorYN'):
     try:
         _yunet = cv2.FaceDetectorYN.create(
             _YUNET_PATH, '', (320, 320),
-            score_threshold=0.3,   # lowered from 0.5 — catches more faces
+            score_threshold=0.3,
             nms_threshold=0.3,
             top_k=5000,
         )
@@ -108,12 +97,9 @@ def _nms(boxes, iou_thresh=0.35):
 
 
 def _pad_box(x, y, w, h, fw, fh, pad=0.15):
-    """Expand face bounding box by pad% on each side for better emotion context."""
     px, py = int(w * pad), int(h * pad)
-    x2 = max(0, x - px)
-    y2 = max(0, y - py)
-    w2 = min(fw - x2, w + 2 * px)
-    h2 = min(fh - y2, h + 2 * py)
+    x2 = max(0, x - px);    y2 = max(0, y - py)
+    w2 = min(fw - x2, w + 2*px);  h2 = min(fh - y2, h + 2*py)
     return x2, y2, w2, h2
 
 
@@ -137,7 +123,6 @@ def detect_faces(frame):
         except Exception as e:
             log.warning('YuNet error: %s', e)
 
-    # Haar fallback — more sensitive parameters
     gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     found = _haar.detectMultiScale(
         gray, scaleFactor=1.05, minNeighbors=3,
@@ -155,18 +140,18 @@ def index():
 @app.route('/health')
 def health():
     return jsonify({
-        'status':        'ok' if _interp is not None else 'degraded',
-        'model_loaded':  _interp is not None,
+        'status':        'ok' if _session is not None else 'degraded',
+        'model_loaded':  _session is not None,
         'model_error':   model_error,
         'face_detector': 'yunet' if USE_YUNET else 'haar',
+        'onnx_file':     os.path.exists(_MODEL_PATH),
         'yunet_file':    os.path.exists(_YUNET_PATH),
-        'tflite_file':   os.path.exists(_MODEL_PATH),
     })
 
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    if _interp is None:
+    if _session is None:
         return jsonify({'error': f'Model not loaded: {model_error}', 'faces': []})
 
     data = request.get_json(silent=True)
@@ -178,14 +163,14 @@ def predict():
         if ',' in image_data:
             image_data = image_data.split(',')[1]
 
-        image_bytes = base64.b64decode(image_data)
-        nparr       = np.frombuffer(image_bytes, np.uint8)
-        frame       = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
+        frame = cv2.imdecode(
+            np.frombuffer(base64.b64decode(image_data), np.uint8),
+            cv2.IMREAD_COLOR,
+        )
         if frame is None:
             return jsonify({'error': 'Could not decode image', 'faces': []})
 
-        # Resize very large frames for speed (cap at 640px wide)
+        # Cap at 640px wide for speed
         fh, fw = frame.shape[:2]
         if fw > 640:
             scale = 640 / fw
@@ -197,7 +182,6 @@ def predict():
         results = []
 
         for (x, y, w, h) in faces:
-            # Pad the ROI slightly so the model gets more context
             px, py, pw, ph = _pad_box(x, y, w, h, fw, fh)
             emotion, confidence, scores = predict_emotion(gray[py:py+ph, px:px+pw])
             results.append({
@@ -207,7 +191,7 @@ def predict():
                 'scores':     scores,
             })
 
-        log.info('predict: %d face(s) detected', len(results))
+        log.info('predict: %d face(s)', len(results))
         return jsonify({'faces': results})
 
     except Exception as e:
